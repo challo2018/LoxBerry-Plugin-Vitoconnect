@@ -495,14 +495,18 @@ function Viessmann_SetData( $Parameter, $Value ){
 		case "heating.circuits.0.heating.curve":
 			$SplitValues = explode("-",$value);
 			$url = $url.$Parameter."/commands/setCurve";			
-			$PostData = "{\"shift\":".$SplitValues[0]."\"slope\":"$SplitValues[1]."}";
+			$PostData = "{\"shift\":".$SplitValues[0]."\"slope\":".$SplitValues[1]."}";
 			break;
 		case "heating.circuits.1.heating.curve":
 			$SplitValues = explode("-",$value);
 			$url = $url.$Parameter."/commands/setCurve";			
-			$PostData = "{\"shift\":".$SplitValues[0]."\"slope\":"$SplitValues[1]."}";
+			$PostData = "{\"shift\":".$SplitValues[0]."\"slope\":".$SplitValues[1]."}";
 			break;
 		case "heating.dhw.temperature.main":
+			$url = $url.$Parameter."/commands/setTargetTemperature";
+			$PostData = "{\"temperature\":".$Value."}";
+			break;
+		case "heating.dhw.temperature":
 			$url = $url.$Parameter."/commands/setTargetTemperature";
 			$PostData = "{\"temperature\":".$Value."}";
 			break;
