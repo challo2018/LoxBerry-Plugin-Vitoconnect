@@ -216,7 +216,7 @@ function Viessmann_summary( $login ){
 	
 	//$installationJson = Viessmann_GetData ( apiURLBase."gateways");
 
-	$modelInstallationJson = Viessmann_GetData ( apiURLBase."installations?includeGateways=true");
+	$modelInstallationJson = Viessmann_GetData ( apiURL."installations?includeGateways=true");
 	
 	$modelInstallationEntity = json_decode($modelInstallationJson, true);
 	
@@ -254,7 +254,7 @@ function Viessmann_summary( $login ){
 	echo "\n";
 	echo "Get DeviceData from Viessmann API Service.\n";
 	
-	$installationDetailJson = Viessmann_GetData (apiURLBase."installations/".$Install->general->id."/gateways/".$Install->general->serial."/devices/0/features/" );
+	$installationDetailJson = Viessmann_GetData (apiURL."installations/".$Install->general->id."/gateways/".$Install->general->serial."/devices/0/features/" );
 	
 	//echo $installationDetailJson;
 	$Install->detail = new \stdClass();
@@ -275,9 +275,9 @@ function Viessmann_summary( $login ){
 					
 					case "ErrorListChanges":
 					case "Schedule":
-						//Bei der Rückmeldung der Felder heating.errors.avtive und heating.errors.history wird, wenn kein Fehler vorhanden ist, ein leeres Array übermittelt
-						//Da somit kein Wert vorhanden ist, erfolgt auch keine Änderung des MQTT Topics
-						//Überprüfung des Arrays und falls leer wird es mit pseudowerten gefüllt
+						//Bei der RÃ¼ckmeldung der Felder heating.errors.avtive und heating.errors.history wird, wenn kein Fehler vorhanden ist, ein leeres Array Ã¼bermittelt
+						//Da somit kein Wert vorhanden ist, erfolgt auch keine Ã„nderung des MQTT Topics
+						//ÃœberprÃ¼fung des Arrays und falls leer wird es mit pseudowerten gefÃ¼llt
 						if ($Key == "heating.errors.active.entries" || $Key =="heating.errors.history.entries"){
 							foreach($value->value as $subkey => $subval){
 								if(empty($subval)){
@@ -331,7 +331,7 @@ function Viessmann_login ( $user, $pass, $apikey ){
 	$SessionCode = Viessmann_GetAuthCode( authorize_URL."?client_id=".$apikey."&redirect_uri=".callback_uri."&code_challenge=2e21faa1-db2c-4d0b-a10f-575fd372bc8c-575fd372bc8c&"."&scope=IoT%20User%20offline_access"."&response_type=code", $user,$pass);
 	echo $SessionCode;
 	
-	//Herausfiltern des AuthenticationCode aus dem Rückgabewert
+	//Herausfiltern des AuthenticationCode aus dem RÃ¼ckgabewert
 	preg_match ('/code=(.*)"/', $SessionCode, $matches);
 	$code = $matches[1];	
 	//echo "FOUND CODE: $code END CODE";
@@ -479,7 +479,7 @@ function Viessmann_SetData( $Parameter, $Value ){
 	global $token;
 	
 	
-	$installationJson = Viessmann_GetData ( apiURLBase."installations?includeGateways=true");
+	$installationJson = Viessmann_GetData ( apiURL."installations?includeGateways=true");
 	
 	$installationJsonDecode = json_decode($installationJson, true);
 	
@@ -487,7 +487,7 @@ function Viessmann_SetData( $Parameter, $Value ){
 	$id = $installationJsonDecode['data'][0]['gateways'][0]['installationId'];
 	$serial = $installationJsonDecode['data'][0]['gateways'][0]['serial'];	
 		
-	$url =(apiURLBase."installations/".$id."/gateways/".$serial."/devices/0/features/" );
+	$url =(apiURL."installations/".$id."/gateways/".$serial."/devices/0/features/" );
 	
 	echo "Set Param: ".$Parameter." to Value: ".$Value;
 	
