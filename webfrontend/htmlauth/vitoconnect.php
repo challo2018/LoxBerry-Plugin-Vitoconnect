@@ -225,6 +225,8 @@ function Viessmann_summary( $login ){
 	$Install->general-> serial = $modelInstallationEntity['data'][0]['gateways'][0]['serial'];	
 	$Install->general-> version = $modelInstallationEntity['data'][0]['gateways'][0]['version'];	
 	$Install->general-> aggregatedstatus = $modelInstallationEntity['data'][0]['aggregatedStatus'];
+	# There is no documentation which values are possible. The only known thing is WorksProperly means OK
+	$Install->general-> aggregatedstatus_ok = (strcasecmp($Install->general->aggregatedstatus, "WorksProperly") == 0);
 	$Install->general-> gatewaytype = $modelInstallationEntity['data'][0]['gateways'][0]['gatewayType'];
 	
 	
@@ -258,7 +260,8 @@ function Viessmann_summary( $login ){
 	
 	//echo $installationDetailJson;
 	$Install->detail = new \stdClass();
-	$Install->detail->aggregatedstatus= $Install->general->aggregatedstatus;	
+	$Install->detail->aggregatedstatus= $Install->general->aggregatedstatus;
+	$Install->detail->aggregatedstatus_ok= $Install->general->aggregatedstatus_ok;
 	$Install->detail-> timestamp = date('r',time());
 	
 	$installationDetailEntity = json_decode($installationDetailJson, false);
