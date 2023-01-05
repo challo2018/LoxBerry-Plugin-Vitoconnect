@@ -226,7 +226,7 @@ function Viessmann_summary( $login ){
 	$Install->general-> version = $modelInstallationEntity['data'][0]['gateways'][0]['version'];	
 	$Install->general-> aggregatedstatus = $modelInstallationEntity['data'][0]['aggregatedStatus'];
 	# There is no documentation which values are possible. The only known thing is WorksProperly means OK
-    $Install->general-> aggregatedstatus_ok = (strcasecmp($Install->general->aggregatedstatus, "WorksProperly") == 0);
+	$Install->general-> aggregatedstatus_ok = (strcasecmp($Install->general->aggregatedstatus, "WorksProperly") == 0);
 	$Install->general-> gatewaytype = $modelInstallationEntity['data'][0]['gateways'][0]['gatewayType'];
 	
 	
