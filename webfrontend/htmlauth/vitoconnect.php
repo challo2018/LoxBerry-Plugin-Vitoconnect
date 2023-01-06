@@ -265,6 +265,7 @@ function Viessmann_summary( $login ){
 	$Install->detail-> timestamp = date('r',time());
 	
 	$installationDetailEntity = json_decode($installationDetailJson, false);
+	$latestEpochTimeFoundInData=0; //store the latest time found within the data itself. Some change quite seldomly, while e.g. outside temperature changes frequently
 	
 	foreach($installationDetailEntity->data as $entity){		
 		$DetailEntity = $entity;	
@@ -273,6 +274,10 @@ function Viessmann_summary( $login ){
 			$Key = $entity->feature;
 			$Key = $Key.".".$key;
 			$type =  $value->type;
+			$currentDateTimeFeature = DateTime::createFromFormat('Y-m-d\TH:i:s.u\Z', $entity->timestamp, new DateTimeZone('UTC'))->getTimestamp(); // fun fact that DateTime::ISO8601 does not work with fraction of seconds
+			if ($currentDateTimeFeature > $latestEpochTimeFoundInData) {
+				$latestEpochTimeFoundInData = $currentDateTimeFeature;
+			}
 			
 				switch($type) {
 					
@@ -313,7 +318,7 @@ function Viessmann_summary( $login ){
 				$Install->detail->$Key=$Value;
 		}
 	}
-	
+	$Install->detail-> timestamp_latestdata_lox = epoch2lox($latestEpochTimeFoundInData);
 	
 	$detailcontent  = json_encode($Install);
 	$detailcontent  = json_decode($detailcontent,true);
