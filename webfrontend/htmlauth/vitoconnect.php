@@ -574,6 +574,14 @@ function Viessmann_SetData( $Parameter, $Value ){
 			$url = $url.$Parameter."/commands/setSchedule";
 			$PostData = "{\"newSchedule\":".$Value."}";
 			break;
+		case "heating.circuits.0.heating.schedule":
+			$url = $url.$Parameter."/commands/setSchedule";
+			$PostData = "{\"newSchedule\":".$Value."}";
+			break;
+		case "heating.circuits.1.heating.schedule":
+			$url = $url.$Parameter."/commands/setSchedule";
+			$PostData = "{\"newSchedule\":".$Value."}";
+			break;
 
 		default: 
 			echo "Action '" . $Parameter . "' not supported. Exiting.\n";
