@@ -5,6 +5,7 @@ error_log("------------------------------------------------------");
 
 include_once "loxberry_system.php";
 include_once "loxberry_io.php";
+require_once "loxberry_log.php";
 require_once "defines.php";
 
 require_once "./phpMQTT/phpMQTT.php";
@@ -25,7 +26,20 @@ require_once "./link/EvolvableLinkProviderInterface.php";
 
 require_once "./exception-constructor-tools/ExceptionConstructorTools.php";
 
+// Create and start log
+// Shutdown function
+register_shutdown_function('shutdown');
+function shutdown()
+{
+	global $log;
+	
+	if(isset($log)) {
+		LOGEND("Processing finished");
+	}
+}
 
+$log = LBLog::newLog( [ "name" => "Vitoconnect", "stderr" => 1 ] );
+LOGSTART("Start Logging");
 
 //
 // Query parameter 
@@ -73,35 +87,35 @@ if(isset($_GET["action"])) {
 			$action = "relogin";
 			break;
 		default: 
-			echo "Action '" . $_GET["action"] . "' not supported. Exiting.\n";
+			LOGERR("Action '" . $_GET["action"] . "' not supported. Exiting.");
 			exit(1);
 	}
 }
 
-echo "Calling parameters:\n";
-echo "  action : $action\n";
-echo "  option : $Parameter\n";
-echo "  value  : $Value\n";
+LOGDEB("Calling parameters:");
+LOGDEB("  action : $action");
+LOGDEB("  option : $Parameter");
+LOGDEB("  value  : $Value");
 
 // Validy check
 if( $action == "setvalue"  && ($Parameter == false || $Value == false) ) {
-	echo "Action '$action' requires parameter option/value. Exiting.\n";
+	LOGERR("Action '$action' requires parameter option/value. Exiting.");
 	exit(1);
 }
 
 // Init
 $token = false;
 if( ! file_exists(CONFIGFILE) ) {
-	echo "You need to create a json config file. Exiting.\n";
+	LOGERR("You need to create a json config file. Exiting.");
 	exit(1);
 } else {
-	echo "Using configfile " . CONFIGFILE . "\n";
+	LOGDEB("Using configfile " . CONFIGFILE );
 	$configdata = file_get_contents(CONFIGFILE);
 	$config = json_decode($configdata);
 	if( empty($config) ) {
-		echo "Config file exists, but seems to be empty or invalid. Exiting.\n";
+		LOGERR("Config file exists, but seems to be empty or invalid. Exiting.");
 		if( !empty(json_last_error()) ) {
-			echo "JSON Error: " . json_last_error() . " " . json_last_error_msg() . "\n";
+			LOGERR("JSON Error: " . json_last_error() . " " . json_last_error_msg());
 		}
 		exit(1);
 	}
@@ -110,13 +124,13 @@ if( ! file_exists(CONFIGFILE) ) {
 	$apikey = $config->apikey;	
 }
 if( empty($user) || empty($pass) || empty($apikey)) {
-	echo "User and/or pass and/or key not set. Exiting.\n";
+	LOGERR("User and/or pass and/or key not set. Exiting.");
 	exit(1);
 }
 
 // Check if this is a LoxBerry
 if ( function_exists("currtime") ) {
-	echo "Running on a LoxBerry\n";
+	LOGDEB("Running on a LoxBerry");
 	$islb = true;
 	$msnr = isset($config->Loxone->msnr) ? $config->Loxone->msnr : 1 ;
 } else {
@@ -148,7 +162,7 @@ if ($islb && $mqttenabled && empty($brokeraddress) ) {
 		$brokeruser = $mqttcred['brokeruser'];
 		$brokerpass = $mqttcred['brokerpass'];
 		
-		echo "Using broker settings from MQTT Gateway plugin:\n";	
+		LOGDEB("Using broker settings from MQTT Gateway plugin:");	
 	}
 	
 }
@@ -156,12 +170,12 @@ if ($islb && $mqttenabled && empty($brokeraddress) ) {
 // Final MQTT check
 if ( $mqttenabled ) {
 	if ( empty($brokeraddress) ) {
-		echo "MQTT is enabled, but no broker is set. Disabling MQTT.\n";
+		LOGERR("MQTT is enabled, but no broker is set. Disabling MQTT.");
 		$mqttenabled = false;
 	} else {
-		echo "Broker host : $brokeraddress\n";
-		echo "Broker user : $brokeruser\n";
-		echo "Broker pass : " . substr($brokerpass, 0, 1) . str_repeat("*", strlen($brokerpass)-1) . "\n";		
+		LOGDEB("Broker host : $brokeraddress");
+		LOGDEB("Broker user : $brokeruser");
+		LOGDEB("Broker pass : " . substr($brokerpass, 0, 1) . str_repeat("*", strlen($brokerpass)-1));		
 	}
 }
 
@@ -190,17 +204,17 @@ if( $action == "setvalue" ) {
 	exit(0);
 } 
 
-echo "Don't know what to do (action '$action'). Exiting.\n";
+LOGERR("Don't know what to do (action '$action'). Exiting.");
 exit(1);
 
 
 
 function Viessmann_summary( $login ){
 			
-	echo "Get Data from Viessmann API Service.\n";
+	LOGDEB("Get Data from Viessmann API Service.");
 	
 	if ( empty($login) ) {
-		echo "JSON error, or JSON is empty: Error code " . json_last_error() . " " . json_last_error_msg() . "\n";
+		LOGERR("JSON error, or JSON is empty: Error code " . json_last_error() . " " . json_last_error_msg());
 		return;
 	}
 	
@@ -217,6 +231,10 @@ function Viessmann_summary( $login ){
 	//$installationJson = Viessmann_GetData ( apiURLBase."gateways");
 
 	$modelInstallationJson = Viessmann_GetData ( apiURL."installations?includeGateways=true");
+	if (is_null($modelInstallationJson)) {
+		LOGERR("Unable to get modell installation - exiting");
+		exit(1);
+	}
 	
 	$modelInstallationEntity = json_decode($modelInstallationJson, true);
 	
@@ -253,12 +271,15 @@ function Viessmann_summary( $login ){
 	
 	
 	//Get Detail Data of your installation
-	echo "\n";
-	echo "Get DeviceData from Viessmann API Service.\n";
+	LOGDEB("Get DeviceData from Viessmann API Service.");
 	
 	$installationDetailJson = Viessmann_GetData (apiURL."installations/".$Install->general->id."/gateways/".$Install->general->serial."/devices/0/features/" );
-	
-	//echo $installationDetailJson;
+	if (is_null($installationDetailJson)) {
+		LOGERR("Unable to get installation details -exiting");
+		exit(1);
+	}
+
+	LOGDEB("Installation detail $installationDetailJson");
 	$Install->detail = new \stdClass();
 	$Install->detail->aggregatedstatus= $Install->general->aggregatedstatus;
 	$Install->detail->aggregatedstatus_ok= $Install->general->aggregatedstatus_ok;
@@ -307,7 +328,7 @@ function Viessmann_summary( $login ){
 						break;
 						
 					default: 
-						echo "Type '" . $type . "' not supported. Exiting.\n";
+						LOGERR("Type '" . $type . "' not supported. Exiting.");
 						$Value = "Not supported";
 				}
 				$Install->detail->$Key=$Value;
@@ -332,7 +353,7 @@ function Viessmann_login ( $user, $pass, $apikey ){
 	global $token;
 
 	$SessionCode = Viessmann_GetAuthCode( authorize_URL."?client_id=".$apikey."&redirect_uri=".callback_uri."&code_challenge=2e21faa1-db2c-4d0b-a10f-575fd372bc8c-575fd372bc8c&"."&scope=IoT%20User%20offline_access"."&response_type=code", $user,$pass);
-	echo $SessionCode;
+	LOGDEB($SessionCode);
 	
 	//Herausfiltern des AuthenticationCode aus dem Rückgabewert
 	preg_match ('/code=(.*)"/', $SessionCode, $matches);
@@ -344,7 +365,7 @@ function Viessmann_login ( $user, $pass, $apikey ){
 
 	$login = json_decode($AccessToken);
 	if ( empty($login) ) {
-		echo "JSON error, or JSON is empty: Error code " . json_last_error() . " " . json_last_error_msg() . "\n";
+		LOGERR("JSON error, or JSON is empty: Error code " . json_last_error() . " " . json_last_error_msg() );
 		return;
 	}
 	$login->ExpirationDate = (time() + $login->expires_in);
@@ -355,7 +376,7 @@ function Viessmann_login ( $user, $pass, $apikey ){
 	
 	// Read token
 	if( empty($login->access_token) ) {
-		echo "Data error, no token found. Response: $logindata\n";
+		LOGERR("Data error, no token found. Response: $logindata");
 		return;
 	} else {
 		$token = $login->access_token;
@@ -375,7 +396,7 @@ function Viessmann_readlogin (){
 	
 	// Read token
 	if( empty($login->access_token) ) {
-		echo "File data error, no token found. Fallback to re-login\n";
+		LOGINF("File data error, no token found. Fallback to re-login");
 		return;
 	}
 	
@@ -383,13 +404,13 @@ function Viessmann_readlogin (){
 
 	
 	$tokenexpires = $login->ExpirationDate;
-	echo "Token expires: " . $tokenexpires . " (" . date('c', $tokenexpires) . ")\n";
+	LOGDEB("Token expires: " . $tokenexpires . " (" . date('c', $tokenexpires) . ")");
 	
 	if( $tokenexpires > time()-10 ) {
 		// Token is valid
 		$token = $login->access_token;
 	} else {
-		echo "Token expired - refreshing token\n";
+		LOGINF("Token expired - refreshing token");
 	}
 		
 	// echo $logindata . "\n";
@@ -416,7 +437,7 @@ function Viessmann_GetAuthCode( $url, $user, $pwd){
 	
 	// Debugging
 	$crlinf = curl_getinfo($curl);
-	echo "Status: " . $crlinf['http_code'] . "\n";
+	LOGDEB("Status GetAuthCode: " . $crlinf['http_code']);
 	
 	curl_close($curl);
 	
@@ -444,7 +465,7 @@ function Viessmann_GetToken( $url, $PostData ){
 	
 	// Debugging
 	$crlinf = curl_getinfo($curl);
-	echo "Status: " . $crlinf['http_code'] . "\n";
+	LOGDEB("Status GetToken: " . $crlinf['http_code']);
 	
 	curl_close($curl);
 	
@@ -470,7 +491,14 @@ function Viessmann_GetData( $url ){
 	
 	// Debugging
 	$crlinf = curl_getinfo($curl);
-	echo "Status: " . $crlinf['http_code'] . "\n";
+	if ( ((int)$crlinf['http_code']) >= 400) {
+		LOGERR("Status GetData: " . $crlinf['http_code']);
+		LOGERR("Response " . $response);
+		$response = null;
+	} else {
+		LOGDEB("Status GetData: " . $crlinf['http_code']);
+	}
+
 	
 	curl_close($curl);
 	
@@ -483,6 +511,10 @@ function Viessmann_SetData( $Parameter, $Value ){
 	
 	
 	$installationJson = Viessmann_GetData ( apiURL."installations?includeGateways=true");
+	if (is_null($installationJson)) {
+		LOGERR("Unable to get installation data, unable to proceed setting data");
+		exit(1);
+	}
 	
 	$installationJsonDecode = json_decode($installationJson, true);
 	
@@ -492,7 +524,7 @@ function Viessmann_SetData( $Parameter, $Value ){
 		
 	$url =(apiURL."installations/".$id."/gateways/".$serial."/devices/0/features/" );
 	
-	echo "Set Param: ".$Parameter." to Value: ".$Value;
+	LOGINF("Set Param: ".$Parameter." to Value: ".$Value);
 	
 	switch($Parameter) {
 		case "heating.circuits.0.heating.curve":
@@ -576,7 +608,7 @@ function Viessmann_SetData( $Parameter, $Value ){
 			break;
 
 		default: 
-			echo "Action '" . $Parameter . "' not supported. Exiting.\n";
+			LOGERR("Action '" . $Parameter . "' not supported. Exiting.");
 			exit(1);
 	}
 	
@@ -597,13 +629,15 @@ function Viessmann_SetData( $Parameter, $Value ){
 	//curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
 	curl_setopt($curl, CURLOPT_POSTFIELDS,$PostData);
 
-	echo "curl_send URL: $url\n";
+	LOGINF("curl_send URL: $url");
+	LOGDEB("curl_send post data: $PostData");
 	$response = curl_exec($curl);
 	
-	echo "curl_exec finished\n";
+	LOGDEB("curl_exec finished");
 	// Debugging
 	$crlinf = curl_getinfo($curl);
-	echo "Status: " . $crlinf['http_code'] . "\n";
+	LOGINF("Status:  " . $crlinf['http_code']);
+	LOGDEB("Status:  " . print_r($crlinf,true));
 	
 	curl_close($curl);
 	
@@ -625,12 +659,12 @@ function relay ( $sendbuffer ){
 	
 		// Show values
 	foreach ($sendbuffer as $key => $value) {
-		echo "   $key: $value\n";
+		LOGDEB("   $key: $value");
 	}
 	
 	// Send via HTTP to Loxone Miniserver
 	if( $islb && isset($config->Loxone->enabled) && Vitoconnect_is_enabled($config->Loxone->enabled) ) {
-		echo "Sending data to Loxone Miniserver No. $msnr...\n";
+		LOGDEB("Sending data to Loxone Miniserver No. $msnr...");
 		if( isset($config->Loxone->cachedisabled) && Vitoconnect_is_enabled($config->Loxone->cachedisabled) ) {
 			mshttp_send( $msnr, $sendbuffer );
 		} else {
@@ -659,7 +693,7 @@ function mqtt_publish_local ( $keysandvalues ) {
 		foreach ($keysandvalues as $key => $value) {
 			//$keysplit=explode("_", $key, 2);
 			$key=str_replace(".","/",$key);
-			echo "MQTT publishing " . MQTTTOPIC . "/".$key.": $value...\n";
+			LOGDEB("MQTT publishing " . MQTTTOPIC . "/".$key.": $value...");
 			$mqtt->publish(MQTTTOPIC . "/". $key, $value, 0, 1);
 		}
 		$mqtt->close();
