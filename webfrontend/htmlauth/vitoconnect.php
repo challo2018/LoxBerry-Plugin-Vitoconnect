@@ -28,6 +28,7 @@ require_once "./exception-constructor-tools/ExceptionConstructorTools.php";
 
 // Create and start log
 // Shutdown function
+//see https://wiki.loxberry.de/entwickler/entwicker_tipps_und_tricks/loxberry_logging_tips_and_tricks
 register_shutdown_function('shutdown');
 function shutdown()
 {
