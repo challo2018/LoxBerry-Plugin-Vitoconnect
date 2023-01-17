@@ -26,6 +26,18 @@ require_once "./link/EvolvableLinkProviderInterface.php";
 
 require_once "./exception-constructor-tools/ExceptionConstructorTools.php";
 
+//lowercase, since we transform the keys to lower
+$operatingModeStrInt = [
+	"standby" => 0,
+	"dhwandheating" => 1,
+	"dhw" => 2,
+	"forcednormal" => 3,
+	"forcedreduced" => 4,
+	"undefined" => 9
+];
+
+$operatingModeIntStr = array_flip($operatingModeStrInt);
+
 // Create and start log
 // Shutdown function
 //see https://wiki.loxberry.de/entwickler/entwicker_tipps_und_tricks/loxberry_logging_tips_and_tricks
@@ -58,17 +70,19 @@ if (!empty($argv)){
 }
 
 // Parse query paraeters
-
+LOGDEB("GET params:  " . print_r($_GET,true));
 // Default action
 $action = "summary";
 $Parameter = false;
-$Value = false;
+$Value = 0;
+$ValueSet=false;
 
 if(!empty($_GET["option"])) {
 	$Parameter = $_GET["option"];
 }
-if(!empty($_GET["value"])) {
+if(array_key_exists("value", $_GET)) { //could be that value is set to 0 intentionally!
 	$Value = $_GET["value"];
+	$ValueSet=true;
 }
 
 // Actions
@@ -99,7 +113,7 @@ LOGDEB("  option : $Parameter");
 LOGDEB("  value  : $Value");
 
 // Validy check
-if( $action == "setvalue"  && ($Parameter == false || $Value == false) ) {
+if( $action == "setvalue"  && ($Parameter == false || $ValueSet == false) ) {
 	LOGERR("Action '$action' requires parameter option/value. Exiting.");
 	exit(1);
 }
@@ -211,6 +225,7 @@ exit(1);
 
 
 function Viessmann_summary( $login ){
+	global $operatingModeStrInt;
 			
 	LOGDEB("Get Data from Viessmann API Service.");
 	
@@ -331,6 +346,13 @@ function Viessmann_summary( $login ){
 						
 					case "string":
 						$Value= $value->value;
+						//map operating modes to int
+						if (strEndsWith($Key, 'operating.modes.active.value')) {
+							$lower_value = strtolower($Value);
+							$Int_value = $operatingModeStrInt[$lower_value];
+							$Int_key = $Key . ".enum";
+							$Install->detail->$Int_key=$Int_value;
+						}
 						break;
 						
 					default: 
@@ -341,7 +363,7 @@ function Viessmann_summary( $login ){
 		}
 	}
 	$Install->detail-> timestamp_latestdata_lox = epoch2lox($latestEpochTimeFoundInData);
-	
+
 	$detailcontent  = json_encode($Install);
 	$detailcontent  = json_decode($detailcontent,true);
 	ksort($detailcontent["detail"]);
@@ -514,6 +536,7 @@ function Viessmann_GetData( $url ){
 
 function Viessmann_SetData( $Parameter, $Value ){
 	global $token;
+	global $operatingModeIntStr;
 	
 	
 	$installationJson = Viessmann_GetData ( apiURL."installations?includeGateways=true");
@@ -566,6 +589,17 @@ function Viessmann_SetData( $Parameter, $Value ){
 		case "heating.circuits.1.operating.modes.active":
 			$url = $url.$Parameter."/commands/setMode";
 			$PostData = "{\"mode\":\"".$Value."\"}";
+			break;
+		case "heating.circuits.0.operating.modes.active.enum":
+		case "heating.circuits.1.operating.modes.active.enum":
+			$Str_value = $operatingModeIntStr[(int)$Value];
+			$Parameter = substr($Parameter, 0, -5);//remove .enum at the end
+			if ($Str_value == "undefined") {
+				LOGERR("Illegal enum value $Value - maps to $StrValue");
+				exit(1);
+			}
+			$url = $url.$Parameter."/commands/setMode";
+			$PostData = "{\"mode\":\"".$Str_value."\"}";
 			break;
 		case "heating.circuits.0.operating.programs.normal":
 			$url = $url.$Parameter."/commands/setTemperature";
@@ -650,7 +684,14 @@ function Viessmann_SetData( $Parameter, $Value ){
 	LOGDEB("curl_exec finished");
 	// Debugging
 	$crlinf = curl_getinfo($curl);
-	LOGINF("Status:  " . $crlinf['http_code']);
+
+	if ( ((int)$crlinf['http_code']) >= 400) {
+		LOGERR("Status GetData: " . $crlinf['http_code']);
+		LOGERR("Response " . $response);
+		$response = null;
+	} else {
+		LOGINF("Status:  " . $crlinf['http_code']);
+	}
 	LOGDEB("Status:  " . print_r($crlinf,true));
 	
 	curl_close($curl);
@@ -727,4 +768,7 @@ function Vitoconnect_is_enabled($text){
 	}
 	return NULL;
 }
-
+//PHP8 has a solution, PHP 7 not
+function strEndsWith($haystack, $needle) {
+    return substr_compare($haystack, $needle, -strlen($needle)) === 0;
+}
