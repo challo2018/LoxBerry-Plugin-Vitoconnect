@@ -26,17 +26,18 @@ require_once "./link/EvolvableLinkProviderInterface.php";
 
 require_once "./exception-constructor-tools/ExceptionConstructorTools.php";
 
-//lowercase, since we transform the keys to lower
+
 $operatingModeStrInt = [
-	"standby" => 0,
-	"dhwandheating" => 1,
+	"standby" => 1,
+	"dhwAndHeating" => 2,
 	"dhw" => 2,
-	"forcednormal" => 3,
-	"forcedreduced" => 4,
+	"forcedNormal" => 3,
+	"forcedReduced" => 4,
 	"undefined" => 9
 ];
 
 $operatingModeIntStr = array_flip($operatingModeStrInt);
+
 
 // Create and start log
 // Shutdown function
@@ -114,7 +115,7 @@ LOGDEB("  value  : $Value");
 
 // Validy check
 if( $action == "setvalue"  && ($Parameter == false || $ValueSet == false) ) {
-	LOGERR("Action '$action' requires parameter option/value. Exiting.");
+	LOGERR("Action {$action} requires parameter option/value. Exiting.");
 	exit(1);
 }
 
@@ -348,8 +349,7 @@ function Viessmann_summary( $login ){
 						$Value= $value->value;
 						//map operating modes to int
 						if (strEndsWith($Key, 'operating.modes.active.value')) {
-							$lower_value = strtolower($Value);
-							$Int_value = $operatingModeStrInt[$lower_value];
+							$Int_value = $operatingModeStrInt[$Value];
 							$Int_key = $Key . ".enum";
 							$Install->detail->$Int_key=$Int_value;
 						}
@@ -592,11 +592,11 @@ function Viessmann_SetData( $Parameter, $Value ){
 			break;
 		case "heating.circuits.0.operating.modes.active.enum":
 		case "heating.circuits.1.operating.modes.active.enum":
-			$Str_value = $operatingModeIntStr[(int)$Value];
+			$Str_value = isset($operatingModeIntStr[(int)$Value]) ? $operatingModeIntStr[(int)$Value] : "";
 			$Parameter = substr($Parameter, 0, -5);//remove .enum at the end
-			if ($Str_value == "undefined") {
-				LOGERR("Illegal enum value $Value - maps to $StrValue");
-				exit(1);
+			if (empty($Str_value) || $Str_value == "undefined") {
+				LOGERR("Illegal enum value " . $Value );
+				return null;
 			}
 			$url = $url.$Parameter."/commands/setMode";
 			$PostData = "{\"mode\":\"".$Str_value."\"}";
@@ -678,7 +678,7 @@ function Viessmann_SetData( $Parameter, $Value ){
 	curl_setopt($curl, CURLOPT_POSTFIELDS,$PostData);
 
 	LOGINF("curl_send URL: $url");
-	LOGDEB("curl_send post data: $PostData");
+	LOGDEB("curl_send post data: {$PostData}");
 	$response = curl_exec($curl);
 	
 	LOGDEB("curl_exec finished");
@@ -714,12 +714,12 @@ function relay ( $sendbuffer ){
 	
 		// Show values
 	foreach ($sendbuffer as $key => $value) {
-		LOGDEB("   $key: $value");
+		LOGDEB("   {$key}: {$value}");
 	}
 	
 	// Send via HTTP to Loxone Miniserver
 	if( $islb && isset($config->Loxone->enabled) && Vitoconnect_is_enabled($config->Loxone->enabled) ) {
-		LOGDEB("Sending data to Loxone Miniserver No. $msnr...");
+		LOGDEB("Sending data to Loxone Miniserver No. {$msnr}...");
 		if( isset($config->Loxone->cachedisabled) && Vitoconnect_is_enabled($config->Loxone->cachedisabled) ) {
 			mshttp_send( $msnr, $sendbuffer );
 		} else {
