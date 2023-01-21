@@ -26,13 +26,13 @@ require_once "./link/EvolvableLinkProviderInterface.php";
 
 require_once "./exception-constructor-tools/ExceptionConstructorTools.php";
 
-
+//camel case, similar to Viessmann. Note that for sending the values, Viessmann needs correct case!
 $operatingModeStrInt = [
 	"standby" => 1,
 	"dhwAndHeating" => 2,
-	"dhw" => 2,
-	"forcedNormal" => 3,
-	"forcedReduced" => 4,
+	"dhw" => 3,
+	"forcedNormal" => 4,
+	"forcedReduced" => 5,
 	"undefined" => 9
 ];
 
@@ -592,6 +592,10 @@ function Viessmann_SetData( $Parameter, $Value ){
 			break;
 		case "heating.circuits.0.operating.modes.active.enum":
 		case "heating.circuits.1.operating.modes.active.enum":
+			if ((int)$Value == 0) {
+				LOGINF("Ignoring 0 value - Loxone sends this sometimes as no choice");
+				return;
+			}
 			$Str_value = isset($operatingModeIntStr[(int)$Value]) ? $operatingModeIntStr[(int)$Value] : "";
 			$Parameter = substr($Parameter, 0, -5);//remove .enum at the end
 			if (empty($Str_value) || $Str_value == "undefined") {
