@@ -26,6 +26,19 @@ require_once "./link/EvolvableLinkProviderInterface.php";
 
 require_once "./exception-constructor-tools/ExceptionConstructorTools.php";
 
+//camel case, similar to Viessmann. Note that for sending the values, Viessmann needs correct case!
+$operatingModeStrInt = [
+	"standby" => 1,
+	"dhwAndHeating" => 2,
+	"dhw" => 3,
+	"forcedNormal" => 4,
+	"forcedReduced" => 5,
+	"undefined" => 9
+];
+
+$operatingModeIntStr = array_flip($operatingModeStrInt);
+
+
 // Create and start log
 // Shutdown function
 //see https://wiki.loxberry.de/entwickler/entwicker_tipps_und_tricks/loxberry_logging_tips_and_tricks
@@ -58,17 +71,19 @@ if (!empty($argv)){
 }
 
 // Parse query paraeters
-
+LOGDEB("GET params:  " . print_r($_GET,true));
 // Default action
 $action = "summary";
 $Parameter = false;
-$Value = false;
+$Value = 0;
+$ValueSet=false;
 
 if(!empty($_GET["option"])) {
 	$Parameter = $_GET["option"];
 }
-if(!empty($_GET["value"])) {
+if(array_key_exists("value", $_GET)) { //could be that value is set to 0 intentionally!
 	$Value = $_GET["value"];
+	$ValueSet=true;
 }
 
 // Actions
@@ -99,8 +114,8 @@ LOGDEB("  option : $Parameter");
 LOGDEB("  value  : $Value");
 
 // Validy check
-if( $action == "setvalue"  && ($Parameter == false || $Value == false) ) {
-	LOGERR("Action '$action' requires parameter option/value. Exiting.");
+if( $action == "setvalue"  && ($Parameter == false || $ValueSet == false) ) {
+	LOGERR("Action {$action} requires parameter option/value. Exiting.");
 	exit(1);
 }
 
@@ -211,6 +226,7 @@ exit(1);
 
 
 function Viessmann_summary( $login ){
+	global $operatingModeStrInt;
 			
 	LOGDEB("Get Data from Viessmann API Service.");
 	
@@ -331,6 +347,12 @@ function Viessmann_summary( $login ){
 						
 					case "string":
 						$Value= $value->value;
+						//map operating modes to int
+						if (strEndsWith($Key, 'operating.modes.active.value')) {
+							$Int_value = $operatingModeStrInt[$Value];
+							$Int_key = $Key . ".enum";
+							$Install->detail->$Int_key=$Int_value;
+						}
 						break;
 						
 					default: 
@@ -341,7 +363,7 @@ function Viessmann_summary( $login ){
 		}
 	}
 	$Install->detail-> timestamp_latestdata_lox = epoch2lox($latestEpochTimeFoundInData);
-	
+
 	$detailcontent  = json_encode($Install);
 	$detailcontent  = json_decode($detailcontent,true);
 	ksort($detailcontent["detail"]);
@@ -514,6 +536,7 @@ function Viessmann_GetData( $url ){
 
 function Viessmann_SetData( $Parameter, $Value ){
 	global $token;
+	global $operatingModeIntStr;
 	
 	
 	$installationJson = Viessmann_GetData ( apiURL."installations?includeGateways=true");
@@ -566,6 +589,21 @@ function Viessmann_SetData( $Parameter, $Value ){
 		case "heating.circuits.1.operating.modes.active":
 			$url = $url.$Parameter."/commands/setMode";
 			$PostData = "{\"mode\":\"".$Value."\"}";
+			break;
+		case "heating.circuits.0.operating.modes.active.enum":
+		case "heating.circuits.1.operating.modes.active.enum":
+			if ((int)$Value == 0) {
+				LOGINF("Ignoring 0 value - Loxone sends this sometimes as no choice");
+				return;
+			}
+			$Str_value = isset($operatingModeIntStr[(int)$Value]) ? $operatingModeIntStr[(int)$Value] : "";
+			$Parameter = substr($Parameter, 0, -5);//remove .enum at the end
+			if (empty($Str_value) || $Str_value == "undefined") {
+				LOGERR("Illegal enum value " . $Value );
+				return null;
+			}
+			$url = $url.$Parameter."/commands/setMode";
+			$PostData = "{\"mode\":\"".$Str_value."\"}";
 			break;
 		case "heating.circuits.0.operating.programs.normal":
 			$url = $url.$Parameter."/commands/setTemperature";
@@ -644,13 +682,20 @@ function Viessmann_SetData( $Parameter, $Value ){
 	curl_setopt($curl, CURLOPT_POSTFIELDS,$PostData);
 
 	LOGINF("curl_send URL: $url");
-	LOGDEB("curl_send post data: $PostData");
+	LOGDEB("curl_send post data: {$PostData}");
 	$response = curl_exec($curl);
 	
 	LOGDEB("curl_exec finished");
 	// Debugging
 	$crlinf = curl_getinfo($curl);
-	LOGINF("Status:  " . $crlinf['http_code']);
+
+	if ( ((int)$crlinf['http_code']) >= 400) {
+		LOGERR("Status GetData: " . $crlinf['http_code']);
+		LOGERR("Response " . $response);
+		$response = null;
+	} else {
+		LOGINF("Status:  " . $crlinf['http_code']);
+	}
 	LOGDEB("Status:  " . print_r($crlinf,true));
 	
 	curl_close($curl);
@@ -673,12 +718,12 @@ function relay ( $sendbuffer ){
 	
 		// Show values
 	foreach ($sendbuffer as $key => $value) {
-		LOGDEB("   $key: $value");
+		LOGDEB("   {$key}: {$value}");
 	}
 	
 	// Send via HTTP to Loxone Miniserver
 	if( $islb && isset($config->Loxone->enabled) && Vitoconnect_is_enabled($config->Loxone->enabled) ) {
-		LOGDEB("Sending data to Loxone Miniserver No. $msnr...");
+		LOGDEB("Sending data to Loxone Miniserver No. {$msnr}...");
 		if( isset($config->Loxone->cachedisabled) && Vitoconnect_is_enabled($config->Loxone->cachedisabled) ) {
 			mshttp_send( $msnr, $sendbuffer );
 		} else {
@@ -727,4 +772,7 @@ function Vitoconnect_is_enabled($text){
 	}
 	return NULL;
 }
-
+//PHP8 has a solution, PHP 7 not
+function strEndsWith($haystack, $needle) {
+    return substr_compare($haystack, $needle, -strlen($needle)) === 0;
+}
