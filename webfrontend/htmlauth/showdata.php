@@ -5,11 +5,12 @@ require_once "defines.php";
 
 $navbar[1]['active'] = null;
 $navbar[2]['active'] = True;
+$navbar[3]['active'] = null;
 
 
 $L = LBSystem::readlanguage("language.ini");
 $template_title = "Viessmann Vitoconnect Gateway";
-$helplink = "https://www.loxwiki.eu/x/KoNdAw";
+$helplink = "https://wiki.loxberry.de/plugins/vitoconnect/start";
 $helptemplate = "help.html";
 
 LBWeb::lbheader($template_title, $helplink, $helptemplate);
