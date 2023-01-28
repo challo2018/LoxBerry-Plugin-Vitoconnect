@@ -18,5 +18,7 @@ $navbar[1]['URL'] = 'index.php';
  
 $navbar[2]['Name'] = "Query links and data";
 $navbar[2]['URL'] = 'showdata.php';
- 
+
+$navbar[3]['Name'] = "Log";
+$navbar[3]['URL'] = 'log.php'; 
  
