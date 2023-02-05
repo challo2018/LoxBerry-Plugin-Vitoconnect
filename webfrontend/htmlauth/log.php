@@ -17,12 +17,19 @@ $navbar[1]['active'] = null;
 $navbar[2]['active'] = null;
 $navbar[3]['active'] = True;
 
-$html = LBLog::get_notifications_html( LBPPLUGINDIR, null);
-echo $html;
+//LOGFILES
+echo '<p class="wide">'. $L['LOGFILES.HEAD']. '</p>';
 
-if(empty($html))
-{
-    echo $L['LOGFILES.EMPTY'];
+if ($handle = opendir($lbplogdir)) {
+    while (false !== ($entry = readdir($handle))) {
+        if ($entry != "." && $entry != "..") {
+          echo '<div class="ui-corner-all ui-shadow">';
+          echo '<a id="btnlogs" data-role="button" href="/admin/system/tools/logfile.cgi?logfile=plugins/vitoconnect/'. $entry. '&header=html&format=template" target="_blank" data-inline="true" data-mini="true">'.$entry. '</a>';
+          echo '</div>';
+        }
+    }
+    closedir($handle);
 }
 
 LBWeb::lbfooter();
+?>
