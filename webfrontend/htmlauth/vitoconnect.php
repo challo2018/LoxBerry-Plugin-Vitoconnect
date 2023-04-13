@@ -337,7 +337,7 @@ function Viessmann_summary( $login ){
 						break;
 						
 					case "array":
-						$Value= join(",",$value->value);						
+						$Value= join(";",$value->value);						
 						break;
 						
 					case "boolean":
