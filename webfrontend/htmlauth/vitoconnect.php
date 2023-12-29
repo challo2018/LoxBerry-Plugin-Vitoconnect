@@ -337,6 +337,9 @@ function Viessmann_summary( $login ){
 						break;
 						
 					case "array":
+						if (!is_scalar($value->value)) {
+							break;
+						}
 						$Value= join(";",$value->value);						
 						break;
 						
