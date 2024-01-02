@@ -720,7 +720,8 @@ function Viessmann_Publish( $data ){
 function relay ( $sendbuffer ){
 	global $islb, $config, $msnr, $mqttenabled;
 	
-		// Show values
+	// Show values
+	LOGDEB("Sending following values to Loxone and/or MQTT (function relay ( $sendbuffer ):)");
 	foreach ($sendbuffer as $key => $value) {
 		LOGDEB("   {$key}: {$value}");
 	}
