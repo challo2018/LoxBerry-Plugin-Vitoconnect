@@ -250,6 +250,7 @@ function Viessmann_summary( $login ){
 	$modelInstallationJson = Viessmann_GetData ( apiURL."installations?includeGateways=true");
 	if (is_null($modelInstallationJson)) {
 		LOGERR("Unable to get modell installation - exiting");
+		Viessmann_Publish($Install->general);	//Publish General Information to get aggregatedstatus->error when it is not possible to get instalation details. Before no change on MQTT or HTTP when Gateway was offline.
 		exit(1);
 	}
 	
