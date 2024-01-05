@@ -571,6 +571,11 @@ function Viessmann_SetData( $Parameter, $Value ){
 			$url = $url.$Parameter."/commands/setCurve";			
 			$PostData = "{\"shift\":".$SplitValues[0]."\"slope\":".$SplitValues[1]."}";
 			break;
+		case "heating.circuits.2.heating.curve":
+			$SplitValues = explode("-",$value);
+			$url = $url.$Parameter."/commands/setCurve";			
+			$PostData = "{\"shift\":".$SplitValues[0]."\"slope\":".$SplitValues[1]."}";
+			break;
 		case "heating.dhw.temperature.main":
 			$url = $url.$Parameter."/commands/setTargetTemperature";
 			$PostData = "{\"temperature\":".$Value."}";
@@ -595,8 +600,13 @@ function Viessmann_SetData( $Parameter, $Value ){
 			$url = $url.$Parameter."/commands/setMode";
 			$PostData = "{\"mode\":\"".$Value."\"}";
 			break;
+		case "heating.circuits.2.operating.modes.active":
+			$url = $url.$Parameter."/commands/setMode";
+			$PostData = "{\"mode\":\"".$Value."\"}";
+			break;
 		case "heating.circuits.0.operating.modes.active.enum":
 		case "heating.circuits.1.operating.modes.active.enum":
+		case "heating.circuits.2.operating.modes.active.enum":
 			if ((int)$Value == 0) {
 				LOGINF("Ignoring 0 value - Loxone sends this sometimes as no choice");
 				return;
@@ -618,6 +628,10 @@ function Viessmann_SetData( $Parameter, $Value ){
 			$url = $url.$Parameter."/commands/setTemperature";
 			$PostData = "{\"targetTemperature\":".$Value."}";
 			break;
+		case "heating.circuits.2.operating.programs.normal":
+			$url = $url.$Parameter."/commands/setTemperature";
+			$PostData = "{\"targetTemperature\":".$Value."}";
+			break;
 		case "heating.circuits.0.operating.programs.reduced":
 			$url = $url.$Parameter."/commands/setTemperature";
 			$PostData = "{\"targetTemperature\":".$Value."}";
@@ -626,11 +640,19 @@ function Viessmann_SetData( $Parameter, $Value ){
 			$url = $url.$Parameter."/commands/setTemperature";
 			$PostData = "{\"targetTemperature\":".$Value."}";
 			break;
+		case "heating.circuits.2.operating.programs.reduced":
+			$url = $url.$Parameter."/commands/setTemperature";
+			$PostData = "{\"targetTemperature\":".$Value."}";
+			break;
 		case "heating.circuits.0.operating.programs.comfort":
 			$url = $url.$Parameter."/commands/setTemperature";
 			$PostData = "{\"targetTemperature\":".$Value."}";
 			break;
 		case "heating.circuits.1.operating.programs.comfort":
+			$url = $url.$Parameter."/commands/setTemperature";
+			$PostData = "{\"targetTemperature\":".$Value."}";
+			break;
+		case "heating.circuits.2.operating.programs.comfort":
 			$url = $url.$Parameter."/commands/setTemperature";
 			$PostData = "{\"targetTemperature\":".$Value."}";
 			break;
@@ -660,6 +682,10 @@ function Viessmann_SetData( $Parameter, $Value ){
 			$PostData = "{\"newSchedule\":".$Value."}";
 			break;
 		case "heating.circuits.1.heating.schedule":
+			$url = $url.$Parameter."/commands/setSchedule";
+			$PostData = "{\"newSchedule\":".$Value."}";
+			break;
+		case "heating.circuits.2.heating.schedule":
 			$url = $url.$Parameter."/commands/setSchedule";
 			$PostData = "{\"newSchedule\":".$Value."}";
 			break;
