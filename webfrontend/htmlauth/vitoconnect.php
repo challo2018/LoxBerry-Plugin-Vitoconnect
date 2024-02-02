@@ -557,24 +557,25 @@ function Viessmann_SetData( $Parameter, $Value ){
 	$serial = $installationJsonDecode['data'][0]['gateways'][0]['serial'];	
 		
 	$url =(apiURL."installations/".$id."/gateways/".$serial."/devices/0/features/" );
+	$urlv2 =(apiURLv2."installations/".$id."/gateways/".$serial."/devices/0/features/");
 	
 	LOGINF("Set Param: ".$Parameter." to Value: ".$Value);
 	
 	switch($Parameter) {
 		case "heating.circuits.0.heating.curve":
-			$SplitValues = explode("-",$value);
-			$url = $url.$Parameter."/commands/setCurve";			
-			$PostData = "{\"shift\":".$SplitValues[0]."\"slope\":".$SplitValues[1]."}";
+			$SplitValues = explode("|", $Value);
+			$url = $urlv2.$Parameter."/commands/setCurve";
+			$PostData = "{\"shift\":".$SplitValues[0].",\"slope\":".$SplitValues[1]."}";
 			break;
 		case "heating.circuits.1.heating.curve":
-			$SplitValues = explode("-",$value);
-			$url = $url.$Parameter."/commands/setCurve";			
-			$PostData = "{\"shift\":".$SplitValues[0]."\"slope\":".$SplitValues[1]."}";
+			$SplitValues = explode("|",$Value);
+			$url = $urlv2.$Parameter."/commands/setCurve";
+			$PostData = "{\"shift\":".$SplitValues[0].",\"slope\":".$SplitValues[1]."}";
 			break;
 		case "heating.circuits.2.heating.curve":
-			$SplitValues = explode("-",$value);
-			$url = $url.$Parameter."/commands/setCurve";			
-			$PostData = "{\"shift\":".$SplitValues[0]."\"slope\":".$SplitValues[1]."}";
+			$SplitValues = explode("|",$Value);
+			$url = $urlv2.$Parameter."/commands/setCurve";
+			$PostData = "{\"shift\":".$SplitValues[0].",\"slope\":".$SplitValues[1]."}";
 			break;
 		case "heating.dhw.temperature.main":
 			$url = $url.$Parameter."/commands/setTargetTemperature";
@@ -689,7 +690,98 @@ function Viessmann_SetData( $Parameter, $Value ){
 			$url = $url.$Parameter."/commands/setSchedule";
 			$PostData = "{\"newSchedule\":".$Value."}";
 			break;
-
+		/* added by Flanki */
+		case "heating.dhw.temperature.hysteresis":
+			$url = $url.$Parameter."/commands/setHysteresisSwitchOnValue";
+			$PostData = "{\"hysteresis\":".$Value."}";
+			break;
+		// min: 0, max: 2.5
+		case "heating.dhw.temperature.hysteresis":
+			$url = $url.$Parameter."/commands/setHysteresisSwitchOffValue";
+			$PostData = "{\"hysteresis\":".$Value."}";
+			break;
+		// note: only working if dhw mode is comfort and not eco
+		case "heating.dhw.hygiene":
+			if($Value == "enable"){
+				$url = $url.$Parameter."/commands/enable";
+			}
+			$PostData = "{}";
+			break;
+		// values: off - eco - comfort
+		case "heating.dhw.operating.modes.active":
+			$url = $url.$Parameter."/commands/setMode";
+			$PostData = "{\"mode\":\"".$Value."\"}";
+			break;
+		case "heating.circuits.0":
+		case "heating.circuits.0.name":
+			$url = $url.$Parameter."/commands/setName";
+			$PostData = "{\"name\":".$Value."}";
+			break;
+		case "heating.circuits.0.operating.programs.forcedLastFromSchedule":
+			if($Value == "activate"){
+				$url = $url.$Parameter."/commands/activate";
+			}
+			if($Value == "deactivate"){
+				$url = $url.$Parameter."/commands/deactivate";
+			}
+			$PostData = "{}";
+			break;
+		case "heating.circuits.0.operating.programs.reducedHeating":
+			$url = $url.$Parameter."/commands/setTemperature";
+			$PostData = "{\"targetTemperature\":".$Value."}";
+			break;
+		case "heating.circuits.0.operating.programs.normalHeating":
+			$url = $url.$Parameter."/commands/setTemperature";
+			$PostData = "{\"targetTemperature\":".$Value."}";
+			break;
+		case "heating.circuits.0.operating.programs.comfortHeating":
+			$url = $url.$Parameter."/commands/setTemperature";
+			$PostData = "{\"targetTemperature\":".$Value."}";
+			break;			
+		case "heating.circuits.0.operating.programs.reducedCooling":
+			$url = $url.$Parameter."/commands/setTemperature";
+			$PostData = "{\"targetTemperature\":".$Value."}";
+			break;
+		case "heating.circuits.0.operating.programs.normalCooling":
+			$url = $url.$Parameter."/commands/setTemperature";
+			$PostData = "{\"targetTemperature\":".$Value."}";
+			break;
+		case "heating.circuits.0.operating.programs.comfortCooling":
+			$url = $url.$Parameter."/commands/setTemperature";
+			$PostData = "{\"targetTemperature\":".$Value."}";
+			break;
+		case "heating.circuits.0.temperature.levels.setMin":
+			$url = $url."heating.circuits.0.temperature.levels/commands/setMin";
+			$PostData = "{\"temperature\":".$Value."}";
+			break;
+		case "heating.circuits.0.temperature.levels.setMax":
+			$url = $url."heating.circuits.0.temperature.levels/commands/setMax";
+			$PostData = "{\"temperature\":".$Value."}";
+			break;
+		case "heating.circuits.0.temperature.levels.setLevels":
+			$SplitValues = explode("|",$Value);
+			$url = $url."heating.circuits.0.temperature.levels/commands/setLevels";
+			$PostData = "{\"minTemperature\":".$SplitValues[0]."{\"maxTemperature\":".$SplitValues[1]."}";
+			break;
+		case "heating.operating.programs.holidayAtHome.schedule":
+			$SplitValues = explode("|",$Value);
+			$url = $urlv2."heating.operating.programs.holidayAtHome/commands/schedule";
+			$PostData = "{\"start\":".$SplitValues[0]."{\"end\":".$SplitValues[1]."}";
+			break;
+		case "heating.operating.programs.holidayAtHome.unschedule":
+			$url = $urlv2."heating.operating.programs.holidayAtHome/commands/unschedule";
+			$PostData = "{}";
+			break;
+		case "heating.operating.programs.holiday.schedule":
+			$SplitValues = explode("|",$Value);
+			$url = $urlv2."heating.operating.programs.holiday/commands/schedule";
+			$PostData = "{\"start\":".$SplitValues[0]."{\"end\":".$SplitValues[1]."}";
+			break;
+		case "heating.operating.programs.holiday.unschedule":
+			$url = $urlv2."heating.operating.programs.holiday/commands/unschedule";
+			$PostData = "{}";
+			break;
+			
 		default: 
 			LOGERR("Action '" . $Parameter . "' not supported. Exiting.");
 			exit(1);
