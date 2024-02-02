@@ -562,19 +562,19 @@ function Viessmann_SetData( $Parameter, $Value ){
 	
 	switch($Parameter) {
 		case "heating.circuits.0.heating.curve":
-			$SplitValues = explode("-",$value);
-			$url = $url.$Parameter."/commands/setCurve";			
-			$PostData = "{\"shift\":".$SplitValues[0]."\"slope\":".$SplitValues[1]."}";
+			$SplitValues = explode("|", $Value);
+			$url =(apiURLv2."installations/".$id."/gateways/".$serial."/devices/0/features/".$Parameter."/commands/setCurve");
+			$PostData = "{\"shift\":".$SplitValues[0].",\"slope\":".$SplitValues[1]."}";
 			break;
 		case "heating.circuits.1.heating.curve":
-			$SplitValues = explode("-",$value);
-			$url = $url.$Parameter."/commands/setCurve";			
-			$PostData = "{\"shift\":".$SplitValues[0]."\"slope\":".$SplitValues[1]."}";
+			$SplitValues = explode("|",$Value);
+			$url =(apiURLv2."installations/".$id."/gateways/".$serial."/devices/0/features/".$Parameter."/commands/setCurve");
+			$PostData = "{\"shift\":".$SplitValues[0].",\"slope\":".$SplitValues[1]."}";
 			break;
 		case "heating.circuits.2.heating.curve":
-			$SplitValues = explode("-",$value);
-			$url = $url.$Parameter."/commands/setCurve";			
-			$PostData = "{\"shift\":".$SplitValues[0]."\"slope\":".$SplitValues[1]."}";
+			$SplitValues = explode("|",$Value);
+			$url =(apiURLv2."installations/".$id."/gateways/".$serial."/devices/0/features/".$Parameter."/commands/setCurve");
+			$PostData = "{\"shift\":".$SplitValues[0].",\"slope\":".$SplitValues[1]."}";
 			break;
 		case "heating.dhw.temperature.main":
 			$url = $url.$Parameter."/commands/setTargetTemperature";
@@ -758,29 +758,29 @@ function Viessmann_SetData( $Parameter, $Value ){
 			$PostData = "{\"temperature\":".$Value."}";
 			break;
 		case "heating.circuits.0.temperature.levels.setLevels":
-			$SplitValues = explode("-",$value);
+			$SplitValues = explode("|",$Value);
 			$url = $url."heating.circuits.0.temperature.levels/commands/setLevels";
 			$PostData = "{\"minTemperature\":".$SplitValues[0]."{\"maxTemperature\":".$SplitValues[1]."}";
 			break;
 		case "heating.operating.programs.holidayAtHome.schedule":
-			$SplitValues = explode("-",$value);
-			$url = $url."heating.operating.programs.holidayAtHome/commands/schedule";
+			$SplitValues = explode("|",$Value);
+			$url =(apiURLv2."installations/".$id."/gateways/".$serial."/devices/0/features/heating.operating.programs.holidayAtHome/commands/schedule");
 			$PostData = "{\"start\":".$SplitValues[0]."{\"end\":".$SplitValues[1]."}";
 			break;
 		case "heating.operating.programs.holidayAtHome.unschedule":
-			$url = $url."heating.operating.programs.holidayAtHome/commands/unschedule";
+			$url =(apiURLv2."installations/".$id."/gateways/".$serial."/devices/0/features/heating.operating.programs.holidayAtHome/commands/unschedule");
 			$PostData = "{}";
 			break;
 		case "heating.operating.programs.holiday.schedule":
-			$SplitValues = explode("-",$value);
-			$url = $url."heating.operating.programs.holiday/commands/schedule";
+			$SplitValues = explode("|",$Value);
+			$url =(apiURLv2."installations/".$id."/gateways/".$serial."/devices/0/features/heating.operating.programs.holiday/commands/schedule");
 			$PostData = "{\"start\":".$SplitValues[0]."{\"end\":".$SplitValues[1]."}";
 			break;
 		case "heating.operating.programs.holiday.unschedule":
-			$url = $url."heating.operating.programs.holiday/commands/unschedule";
+			$url =(apiURLv2."installations/".$id."/gateways/".$serial."/devices/0/features/heating.operating.programs.holiday/commands/unschedule");
 			$PostData = "{}";
 			break;
-		
+			
 		default: 
 			LOGERR("Action '" . $Parameter . "' not supported. Exiting.");
 			exit(1);
