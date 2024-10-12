@@ -52,6 +52,13 @@ function shutdown()
 	}
 }
 
+// function to check if string is valid json array
+// for PHP version <8.3 otherwise use json_validate
+function isJson($str) {
+    $json = json_decode($str);
+    return $json !== false && !is_null($json) && $str != $json;
+}
+
 $log = LBLog::newLog( [ "name" => "Vitoconnect", "stderr" => 1 ] );
 LOGSTART("Start Logging");
 
@@ -225,7 +232,6 @@ LOGERR("Don't know what to do (action '$action'). Exiting.");
 exit(1);
 
 
-
 function Viessmann_summary( $login ){
 	global $operatingModeStrInt;
 			
@@ -332,18 +338,23 @@ function Viessmann_summary( $login ){
 								if(empty($subval)){
 										$value->value[$subkey] = [["errorCode"=>"F00","timestamp"=>date("c",time()),"accessLevel"=>"customer","priority"=>"Info"]];
 								}
-							}
-							
+							}							
 						}
 						
-						$Value= json_encode($value->value);
+						$Value = json_encode($value->value);
 						break;
 						
 					case "array":
+						//if (isJson($Value) == true) {
+						//if (json_validate($Value) == true) {
+							$Value = json_encode($value->value);	
+							$Value = str_replace(",",";",$Value);
+							break;
+						//}						
 						if (!is_scalar($value->value)) {
 							break;
 						}
-						$Value= join(";",$value->value);						
+						$Value = join(";",$value->value);						
 						break;
 						
 					case "boolean":
@@ -352,7 +363,7 @@ function Viessmann_summary( $login ){
 						break;
 						
 					case "string":
-						$Value= $value->value;
+						$Value = $value->value;
 						//map operating modes to int
 						if (strEndsWith($Key, 'operating.modes.active.value')) {
 							$Int_value = $operatingModeStrInt[$Value];
