@@ -1,0 +1,224 @@
+{
+  "plugins" : {
+    "2d9e1abd70a8b8e2ef23b7830dd6c2dc" : {
+      "author_email" : "kaufmann-michael@gmx.de",
+      "author_name" : "Michael Kaufmann",
+      "autoupdate" : 0,
+      "directories" : {
+        "installfiles" : "/opt/loxberry/data/system/install/homebridge",
+        "lbpbindir" : "/opt/loxberry/bin/plugins/homebridge",
+        "lbpconfigdir" : "/opt/loxberry/config/plugins/homebridge",
+        "lbpdatadir" : "/opt/loxberry/data/plugins/homebridge",
+        "lbphtmlauthdir" : "/opt/loxberry/webfrontend/htmlauth/plugins/homebridge",
+        "lbphtmldir" : "/opt/loxberry/webfrontend/html/plugins/homebridge",
+        "lbplogdir" : "/opt/loxberry/log/plugins/homebridge",
+        "lbptemplatedir" : "/opt/loxberry/templates/plugins/homebridge"
+      },
+      "epoch_firstinstalled" : 1674847214,
+      "files" : {
+        "daemon" : "/opt/loxberry/system/daemons/plugins/homebridge",
+        "sudoers" : "/opt/loxberry/system/sudoers/homebridge",
+        "uninstall" : "/opt/loxberry/data/system/uninstall/homebridge"
+      },
+      "folder" : "homebridge",
+      "interface" : "1.0",
+      "loglevel" : "-1",
+      "loglevels_enabled" : 0,
+      "md5" : "2d9e1abd70a8b8e2ef23b7830dd6c2dc",
+      "name" : "homebridge",
+      "prereleasecfg" : "",
+      "releasecfg" : "",
+      "title" : "Loxberry Homebridge",
+      "version" : "0.1"
+    },
+    "90b814bf136e7b9b41f031fcafdcacb8" : {
+      "author_email" : "fabian.franzmann@gmail.com",
+      "author_name" : "Fabian Franzmann",
+      "autoupdate" : "3",
+      "directories" : {
+        "installfiles" : "/opt/loxberry/data/system/install/Vitoconnect",
+        "lbpbindir" : "/opt/loxberry/bin/plugins/Vitoconnect",
+        "lbpconfigdir" : "/opt/loxberry/config/plugins/Vitoconnect",
+        "lbpdatadir" : "/opt/loxberry/data/plugins/Vitoconnect",
+        "lbphtmlauthdir" : "/opt/loxberry/webfrontend/htmlauth/plugins/Vitoconnect",
+        "lbphtmldir" : "/opt/loxberry/webfrontend/html/plugins/Vitoconnect",
+        "lbplogdir" : "/opt/loxberry/log/plugins/Vitoconnect",
+        "lbptemplatedir" : "/opt/loxberry/templates/plugins/Vitoconnect"
+      },
+      "epoch_firstinstalled" : 1672776668,
+      "epoch_lastupdated" : 1727144583,
+      "files" : {
+        "daemon" : "/opt/loxberry/system/daemons/plugins/Vitoconnect",
+        "sudoers" : "/opt/loxberry/system/sudoers/Vitoconnect",
+        "uninstall" : "/opt/loxberry/data/system/uninstall/Vitoconnect"
+      },
+      "folder" : "Vitoconnect",
+      "interface" : "2.0",
+      "loglevel" : "7",
+      "loglevels_enabled" : 1,
+      "md5" : "90b814bf136e7b9b41f031fcafdcacb8",
+      "name" : "Vitoconnect",
+      "prereleasecfg" : "https://raw.githubusercontent.com/challo2018/LoxBerry-Plugin-Vitoconnect/main/prerelease.cfg",
+      "releasecfg" : "https://raw.githubusercontent.com/challo2018/LoxBerry-Plugin-Vitoconnect/main/release.cfg",
+      "title" : "Viessmann Vitoconnect",
+      "version" : "1.0.0"
+    },
+    "92d3a07b6bf39801bcf5756a8cc2f90a" : {
+      "author_email" : "michael@loxberry.de",
+      "author_name" : "C. Fenzl und M. Schlenstedt",
+      "autoupdate" : "3",
+      "directories" : {
+        "installfiles" : "/opt/loxberry/data/system/install/nukismartlock",
+        "lbpbindir" : "/opt/loxberry/bin/plugins/nukismartlock",
+        "lbpconfigdir" : "/opt/loxberry/config/plugins/nukismartlock",
+        "lbpdatadir" : "/opt/loxberry/data/plugins/nukismartlock",
+        "lbphtmlauthdir" : "/opt/loxberry/webfrontend/htmlauth/plugins/nukismartlock",
+        "lbphtmldir" : "/opt/loxberry/webfrontend/html/plugins/nukismartlock",
+        "lbplogdir" : "/opt/loxberry/log/plugins/nukismartlock",
+        "lbptemplatedir" : "/opt/loxberry/templates/plugins/nukismartlock"
+      },
+      "epoch_firstinstalled" : 1672482950,
+      "epoch_lastupdated" : 1673320987,
+      "files" : {
+        "daemon" : "/opt/loxberry/system/daemons/plugins/nukismartlock",
+        "sudoers" : "/opt/loxberry/system/sudoers/nukismartlock",
+        "uninstall" : "/opt/loxberry/data/system/uninstall/nukismartlock"
+      },
+      "folder" : "nukismartlock",
+      "interface" : "2.0",
+      "loglevel" : "3",
+      "loglevels_enabled" : 1,
+      "md5" : "92d3a07b6bf39801bcf5756a8cc2f90a",
+      "name" : "nukismartlock",
+      "prereleasecfg" : "https://raw.githubusercontent.com/mschlenstedt/LoxBerry-Plugin-Nuki/master/prerelease.cfg",
+      "releasecfg" : "https://raw.githubusercontent.com/mschlenstedt/LoxBerry-Plugin-Nuki/master/release.cfg",
+      "title" : "NUKI SmartLock",
+      "version" : "0.4.1"
+    },
+    "9489b114c85717a2122c27bc80b0b9cf" : {
+      "author_email" : "Michael@loxberry.de",
+      "author_name" : "Michael Schlenstedt",
+      "autoupdate" : "3",
+      "directories" : {
+        "installfiles" : "/opt/loxberry/data/system/install/weather4lox",
+        "lbpbindir" : "/opt/loxberry/bin/plugins/weather4lox",
+        "lbpconfigdir" : "/opt/loxberry/config/plugins/weather4lox",
+        "lbpdatadir" : "/opt/loxberry/data/plugins/weather4lox",
+        "lbphtmlauthdir" : "/opt/loxberry/webfrontend/htmlauth/plugins/weather4lox",
+        "lbphtmldir" : "/opt/loxberry/webfrontend/html/plugins/weather4lox",
+        "lbplogdir" : "/opt/loxberry/log/plugins/weather4lox",
+        "lbptemplatedir" : "/opt/loxberry/templates/plugins/weather4lox"
+      },
+      "epoch_firstinstalled" : 1672429554,
+      "epoch_lastupdated" : 1718158985,
+      "files" : {
+        "daemon" : "/opt/loxberry/system/daemons/plugins/weather4lox",
+        "sudoers" : "/opt/loxberry/system/sudoers/weather4lox",
+        "uninstall" : "/opt/loxberry/data/system/uninstall/weather4lox"
+      },
+      "folder" : "weather4lox",
+      "interface" : "2.0",
+      "loglevel" : "3",
+      "loglevels_enabled" : 1,
+      "md5" : "9489b114c85717a2122c27bc80b0b9cf",
+      "name" : "weather4lox",
+      "prereleasecfg" : "https://raw.githubusercontent.com/mschlenstedt/LoxBerry-Plugin-Weather4Lox/master/prerelease.cfg",
+      "releasecfg" : "https://raw.githubusercontent.com/mschlenstedt/LoxBerry-Plugin-Weather4Lox/master/release.cfg",
+      "title" : "Weather 4 Loxone",
+      "version" : "4.12.0.2"
+    },
+    "d9261607b7164fe83ba88816429a68f2" : {
+      "author_email" : "Michael@loxberry.de",
+      "author_name" : "The Stats4Lox Team",
+      "autoupdate" : 0,
+      "directories" : {
+        "installfiles" : "/opt/loxberry/data/system/install/stats4lox",
+        "lbpbindir" : "/opt/loxberry/bin/plugins/stats4lox",
+        "lbpconfigdir" : "/opt/loxberry/config/plugins/stats4lox",
+        "lbpdatadir" : "/opt/loxberry/data/plugins/stats4lox",
+        "lbphtmlauthdir" : "/opt/loxberry/webfrontend/htmlauth/plugins/stats4lox",
+        "lbphtmldir" : "/opt/loxberry/webfrontend/html/plugins/stats4lox",
+        "lbplogdir" : "/opt/loxberry/log/plugins/stats4lox",
+        "lbptemplatedir" : "/opt/loxberry/templates/plugins/stats4lox"
+      },
+      "epoch_firstinstalled" : 1674504185,
+      "files" : {
+        "daemon" : "/opt/loxberry/system/daemons/plugins/stats4lox",
+        "sudoers" : "/opt/loxberry/system/sudoers/stats4lox",
+        "uninstall" : "/opt/loxberry/data/system/uninstall/stats4lox"
+      },
+      "folder" : "stats4lox",
+      "interface" : "2.0",
+      "loglevel" : "3",
+      "loglevels_enabled" : 1,
+      "md5" : "d9261607b7164fe83ba88816429a68f2",
+      "name" : "stats4lox",
+      "prereleasecfg" : "",
+      "releasecfg" : "",
+      "title" : "Stats4Lox",
+      "version" : "0.9.10"
+    },
+    "df4a84576d0abecdf64965e4d3f0ff88" : {
+      "author_email" : "Michael@loxberry.de",
+      "author_name" : "Michael Schlenstedt",
+      "autoupdate" : 0,
+      "directories" : {
+        "installfiles" : "/opt/loxberry/data/system/install/fhem",
+        "lbpbindir" : "/opt/loxberry/bin/plugins/fhem",
+        "lbpconfigdir" : "/opt/loxberry/config/plugins/fhem",
+        "lbpdatadir" : "/opt/loxberry/data/plugins/fhem",
+        "lbphtmlauthdir" : "/opt/loxberry/webfrontend/htmlauth/plugins/fhem",
+        "lbphtmldir" : "/opt/loxberry/webfrontend/html/plugins/fhem",
+        "lbplogdir" : "/opt/loxberry/log/plugins/fhem",
+        "lbptemplatedir" : "/opt/loxberry/templates/plugins/fhem"
+      },
+      "epoch_firstinstalled" : 1672476341,
+      "files" : {
+        "daemon" : "/opt/loxberry/system/daemons/plugins/fhem",
+        "sudoers" : "/opt/loxberry/system/sudoers/fhem",
+        "uninstall" : "/opt/loxberry/data/system/uninstall/fhem"
+      },
+      "folder" : "fhem",
+      "interface" : "2.0",
+      "loglevel" : "-1",
+      "loglevels_enabled" : 0,
+      "md5" : "df4a84576d0abecdf64965e4d3f0ff88",
+      "name" : "fhem",
+      "prereleasecfg" : "",
+      "releasecfg" : "",
+      "title" : "Fhem",
+      "version" : "0.6.1"
+    },
+    "f21873f370693661863909d413dbdc50" : {
+      "author_email" : "git@loxberry.woerstenfeld.de",
+      "author_name" : "M.Schlenstedt und C.Woerstenfeld",
+      "autoupdate" : 3,
+      "directories" : {
+        "installfiles" : "/opt/loxberry/data/system/install/miniserverbackup",
+        "lbpbindir" : "/opt/loxberry/bin/plugins/miniserverbackup",
+        "lbpconfigdir" : "/opt/loxberry/config/plugins/miniserverbackup",
+        "lbpdatadir" : "/opt/loxberry/data/plugins/miniserverbackup",
+        "lbphtmlauthdir" : "/opt/loxberry/webfrontend/htmlauth/plugins/miniserverbackup",
+        "lbphtmldir" : "/opt/loxberry/webfrontend/html/plugins/miniserverbackup",
+        "lbplogdir" : "/opt/loxberry/log/plugins/miniserverbackup",
+        "lbptemplatedir" : "/opt/loxberry/templates/plugins/miniserverbackup"
+      },
+      "epoch_firstinstalled" : 1672429843,
+      "files" : {
+        "daemon" : "/opt/loxberry/system/daemons/plugins/miniserverbackup",
+        "sudoers" : "/opt/loxberry/system/sudoers/miniserverbackup",
+        "uninstall" : "/opt/loxberry/data/system/uninstall/miniserverbackup"
+      },
+      "folder" : "miniserverbackup",
+      "interface" : "2.0",
+      "loglevel" : "6",
+      "loglevels_enabled" : 1,
+      "md5" : "f21873f370693661863909d413dbdc50",
+      "name" : "miniserverbackup",
+      "prereleasecfg" : "https://raw.githubusercontent.com/Woersty/LoxBerry-Plugin-miniserverbackup/master/prerelease.cfg",
+      "releasecfg" : "https://raw.githubusercontent.com/Woersty/LoxBerry-Plugin-miniserverbackup/master/release.cfg",
+      "title" : "Miniserver Backup",
+      "version" : "2021.10.17"
+    }
+  }
+}
