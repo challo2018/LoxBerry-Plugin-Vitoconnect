@@ -21,6 +21,8 @@ class Configuration {
 
     public $isLoxoneCacheDisabled = false;
 
+    public $apiVersion = 1;
+
     public function __construct() {}
 
     public static function create() {

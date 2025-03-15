@@ -78,7 +78,7 @@ if( $command->action == "summary" ) {
 } 
 
 if( $command->action == "setvalue" ) {
-    setValueViessmann( $command->parameter, $command->value, $loginData);
+    setValueViessmann( $command->parameter, $command->value, $loginData, $configuration->apiVersion);
 	exit(0);
 }
 if ($command->action == "mqttpoll") {
