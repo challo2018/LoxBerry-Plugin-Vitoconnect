@@ -38,6 +38,17 @@ $operatingModeStrInt = [
 
 $operatingModeIntStr = array_flip($operatingModeStrInt);
 
+// Ventilation Operating Mode:
+$VentilatiOnoperatingModeStrInt = [
+	"standby" => 1,
+	"standard" => 2,
+	"ventilation" => 3,
+	"undefined" => 9
+];
+
+$VentilatiOnoperatingModeStrInt = array_flip($VentilatiOnoperatingModeStrInt);
+
+
 
 // Create and start log
 // Shutdown function
@@ -795,7 +806,42 @@ function Viessmann_SetData( $Parameter, $Value, $apiversion ){
 			$url = $url."heating.operating.programs.holiday/commands/unschedule";
 			$PostData = "{}";
 			break;
-			
+		case "ventilation.operating.modes.active.enum":
+			if ((int)$Value == 0) {
+				LOGINF("Ignoring 0 value - Loxone sends this sometimes as no choice");
+				return;	
+			}
+			$Str_value = isset($VentilatiOnoperatingModeStrInt[(int)$Value]) ? $VentilatiOnoperatingModeStrInt[(int)$Value] : "";
+			$Parameter = substr($Parameter, 0, -5);//remove .enum at the end
+			if (empty($Str_value) || $Str_value == "undefined") {
+				LOGERR("Illegal enum value " . $Value );
+				return null;
+			}
+			$url = $url.$Parameter."/commands/setMode";
+			$PostData = "{\"mode\":\"".$Str_value."\"}";
+			break;	
+		case "ventilation.quickmodes.comfort":
+			if($Value == "activate"){
+				$url = $url.$Parameter."/commands/activate";
+			}
+			if($Value == "deactivate"){
+				$url = $url.$Parameter."/commands/deactivate";
+			}
+			$PostData = "{}";
+			break;		
+		case "ventilation.quickmodes.eco":
+			if($Value == "activate"){
+				$url = $url.$Parameter."/commands/activate";
+			}
+			if($Value == "deactivate"){
+				$url = $url.$Parameter."/commands/deactivate";
+			}
+			$PostData = "{}";
+			break;	
+		case "ventilation.schedule.resetSchedule":
+			$url = $url."ventilation.schedule/commands/resetSchedule";
+			$PostData = "{}";
+			break;				
 		default: 
 			LOGERR("Action '" . $Parameter . "' not supported. Exiting.");
 			exit(1);
