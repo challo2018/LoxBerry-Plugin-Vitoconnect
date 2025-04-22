@@ -356,7 +356,7 @@ class phpMQTT
             $buffer .= $this->strwritestring($key, $i);
             $qos = $topic['qos'];
             if ($qos > 1) {
-                this->_log(LOGLEVEL_ERROR, "Unable to subscribe with qos > 1, as this client can only handle 0 and 1, falling back to 1 for $topic");
+                $this->_log(LOGLEVEL_ERROR, "Unable to subscribe with qos > 1, as this client can only handle 0 and 1, falling back to 1 for $topic");
                 $qos = 1;
             }
             $buffer .= chr($qos);

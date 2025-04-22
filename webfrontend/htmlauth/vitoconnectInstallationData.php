@@ -38,10 +38,10 @@ class InstallationGeneral {
     public static function getFromCache(): ?InstallationGeneral
     {
         // Reads installation data from disk
-        if (!file_exists(INSTALLDATA)) {
+        if (!file_exists(INSTALLGENERALCACHE)) {
             return null;
         }
-        $cachedData = file_get_contents(INSTALLDATA);
+        $cachedData = file_get_contents(INSTALLGENERALCACHE);
         $result = InstallationGeneral::fromJsonString($cachedData);
         if ($result == null) {
             return null;
@@ -60,7 +60,7 @@ class InstallationGeneral {
             LOGERR("Unable to get modell installation ");
             return null;
         }
-        file_put_contents(INSTALLDATA, $modelInstallationJson );
+        file_put_contents(INSTALLGENERALCACHE, $modelInstallationJson );
         return InstallationGeneral::fromJsonString($modelInstallationJson);
     }
 
@@ -203,6 +203,11 @@ class InstallationData {
         }
         $result-> timestamp_latestdata_lox = epoch2lox($latestEpochTimeFoundInData);
         return $result;
+    }
+
+    public function persistForControlPlane() {
+        $content  = json_encode($this);
+        file_put_contents(INSTALLDATA, $content );
     }
 }
 

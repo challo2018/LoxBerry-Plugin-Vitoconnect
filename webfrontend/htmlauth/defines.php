@@ -35,6 +35,7 @@ function definePluginDefines() {
     define ("CONFIGFILE", "$lbpconfigdir/config.json");
     define ("TMPPREFIX", isLoxberryRuntime() ? "/run/shm/${lbpplugindir}_" : "/tmp/vitoconnect/");
     define ("LOGINFILE", TMPPREFIX . "sessiondata.json");
+    define ("INSTALLGENERALCACHE", TMPPREFIX . "installGeneralData.json");
     define ("INSTALLDATA", TMPPREFIX . "installdata.json");
 
     define ("client_secret", "2e21faa1-db2c-4d0b-a10f-575fd372bc8c-575fd372bc8c");

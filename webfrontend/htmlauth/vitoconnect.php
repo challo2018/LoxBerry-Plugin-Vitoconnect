@@ -74,6 +74,7 @@ if ( !isset($loginData) ) {
 if( $command->action == "summary" ) {
     $Install= InstallationData::getFromViessmann($loginData);
     publishInstallationDetailToLox($Install->detail, $configuration);
+    $Install->persistForControlPlane();
 	exit(0);
 } 
 
