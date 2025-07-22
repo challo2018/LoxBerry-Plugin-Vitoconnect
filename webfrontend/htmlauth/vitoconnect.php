@@ -263,8 +263,6 @@ function Viessmann_summary( $login ){
 	$Modellinfo -> CU401B_A = "Vitocal xxx-A mit Vitotronic 200 (Typ WO1C)";
 	
 	
-	//$installationJson = Viessmann_GetData ( apiURLBase."gateways");
-
 	$modelInstallationJson = Viessmann_GetData ( apiURL."installations?includeGateways=true");
 	if (is_null($modelInstallationJson)) {
 		LOGERR("Unable to get modell installation - exiting");
