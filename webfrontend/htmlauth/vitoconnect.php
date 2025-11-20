@@ -308,7 +308,8 @@ function Viessmann_summary( $login ){
 	//Get Detail Data of your installation
 	LOGDEB("Get DeviceData from Viessmann API Service.");
 	
-	$installationDetailJson = Viessmann_GetData (apiURL."installations/".$Install->general->id."/gateways/".$Install->general->serial."/devices/0/features/" );
+	// deprecated endpoint of v1 from 2025-11-17 https://api.viessmann-climatesolutions.com/documentation/static/changelog-2025
+	$installationDetailJson = Viessmann_GetData (apiURLv2."installations/".$Install->general->id."/gateways/".$Install->general->serial."/devices/0/features/" );
 	if (is_null($installationDetailJson)) {
 		LOGERR("Unable to get installation details -exiting");
 		exit(1);
