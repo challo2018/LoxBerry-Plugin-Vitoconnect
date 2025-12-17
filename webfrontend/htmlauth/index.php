@@ -56,15 +56,6 @@ LBWeb::lbheader($template_title, $helplink, $helptemplate);
 	<p class="hint">This is the Api-Key created with the <i>Viessmann Developer Portal</i></p>
 </div>
 
-<div data-role="fieldcontain">
-	<label for="apiversion">Api version for commands</label>
-	<select name="apiversion" id="apiversion">
-		<option value="v1">v1 - v1/equipment/"</option>
-		<option value="v2">v2 - v2/features/"</option>
-	</select>
-	<p class="hint">Select the api version to send commands</span>.</p>
-</div>
-
 <div class="wide">Data transmission to Miniserver</div>
 
 <fieldset data-role="controlgroup">
@@ -258,7 +249,6 @@ function formFill()
 	if (typeof user !== 'undefined') $("#user").val( config.user );
 	if (typeof pass !== 'undefined') $("#pass").val( config.pass );
 	if (typeof apikey !== 'undefined') $("#apikey").val( config.apikey );
-	if (typeof config.apiversion !== 'undefined') $("#apiversion").val(config.apiversion).selectmenu("refresh", true);
 	
 		if( typeof config.Cron !== 'undefined') {
 		if (typeof config.Cron.enabled !== 'undefined') $("#Cron\\.enabled").prop('checked', config.Cron.enabled).checkboxradio('refresh');
