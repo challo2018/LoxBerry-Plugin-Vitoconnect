@@ -510,7 +510,7 @@ class VitoconnectDaemon:
                     temp = float(value)
                     logger.info(f"Setting DHW target temperature to {temp}°C")
                     device.setDomesticHotWaterTargetTemperature(temp)
-                elif "one_time_charge" in subtopic:
+                elif "one_time_charge" in sub:
                     if value.lower() in ["1", "start", "true", "on"]:
                         logger.info("Activating DHW one-time charge")
                         device.activateDomesticHotWaterOneTimeCharge()
@@ -520,6 +520,30 @@ class VitoconnectDaemon:
                 self.quota.record_call()
                 self.force_poll = True
                 return
+
+            # Generic Feature Commands: e.g. features/heating/circuits/0/heating/curve with action/payload
+            if "features/" in sub:
+                feat_sub = sub.split("features/", 1)[1]
+                # Try parsing feature path and optional action
+                feat_parts = feat_sub.split("/")
+                action = feat_parts[-1] if len(feat_parts) > 1 and feat_parts[-1].startswith("set") else None
+                feat_name = ".".join(feat_parts[:-1]) if action else ".".join(feat_parts)
+                
+                # Check if payload is json or primitive
+                payload_val = value
+                try:
+                    payload_val = json.loads(value)
+                except Exception:
+                    pass
+
+                raw_cfg = getattr(device, "_raw_config", None)
+                if raw_cfg and hasattr(raw_cfg, "service"):
+                    act_name = action if action else "setMode"
+                    logger.info(f"Setting raw feature {feat_name} via action {act_name} with value {payload_val}")
+                    raw_cfg.service.setProperty(raw_cfg.accessor, feat_name, act_name, payload_val)
+                    self.quota.record_call()
+                    self.force_poll = True
+                    return
 
             logger.warning(f"Unrecognized command subtopic: {subtopic}")
         except Exception as e:
@@ -613,7 +637,7 @@ class VitoconnectDaemon:
                 if serial:
                     record(f"{dev_prefix}/serial", serial, desc="Seriennummer")
 
-                # Core Temperatures
+                # Core Temperatures & Sensors
                 out_temp = self.safe_get(device, "getOutsideTemperature")
                 if out_temp is not None:
                     record(f"{dev_prefix}/temperature/outside", round(out_temp, 2), "°C", "Außentemperatur")
@@ -626,7 +650,19 @@ class VitoconnectDaemon:
                 if supply_temp is not None:
                     record(f"{dev_prefix}/temperature/supply", round(supply_temp, 2), "°C", "Vorlauftemperatur")
 
-                # Burner / Compressor
+                return_temp = self.safe_get(device, "getReturnTemperature")
+                if return_temp is not None:
+                    record(f"{dev_prefix}/temperature/return", round(return_temp, 2), "°C", "Rücklauftemperatur")
+
+                buffer_main_temp = self.safe_get(device, "getBufferMainTemperature")
+                if buffer_main_temp is not None:
+                    record(f"{dev_prefix}/temperature/buffer_main", round(buffer_main_temp, 2), "°C", "Pufferspeicher Temperatur (Mitte/Haupt)")
+
+                buffer_top_temp = self.safe_get(device, "getBufferTopTemperature")
+                if buffer_top_temp is not None:
+                    record(f"{dev_prefix}/temperature/buffer_top", round(buffer_top_temp, 2), "°C", "Pufferspeicher Temperatur (Oben)")
+
+                # Burner (Gas / Oil)
                 burner_active = self.safe_get(device, "getBurnerActive")
                 if burner_active is not None:
                     record(f"{dev_prefix}/burner/active", "1" if burner_active else "0", "", "Brenner aktiv")
@@ -643,7 +679,24 @@ class VitoconnectDaemon:
                 if burner_mod is not None:
                     record(f"{dev_prefix}/burner/modulation", burner_mod, "%", "Brennermodulation")
 
-                # Heat pump specific
+                # Burners collection (multi-stage or multi-burner)
+                burners = getattr(device, "burners", [])
+                for b_idx, b in enumerate(burners):
+                    b_prefix = f"{dev_prefix}/burner_{b_idx}"
+                    b_act = self.safe_get(b, "getActive")
+                    if b_act is not None:
+                        record(f"{b_prefix}/active", "1" if b_act else "0", "", f"Brenner {b_idx}: Aktiv")
+                    b_hrs = self.safe_get(b, "getHours")
+                    if b_hrs is not None:
+                        record(f"{b_prefix}/hours", b_hrs, "h", f"Brenner {b_idx}: Betriebsstunden")
+                    b_str = self.safe_get(b, "getStarts")
+                    if b_str is not None:
+                        record(f"{b_prefix}/starts", b_str, "", f"Brenner {b_idx}: Starts")
+                    b_mod = self.safe_get(b, "getModulation")
+                    if b_mod is not None:
+                        record(f"{b_prefix}/modulation", b_mod, "%", f"Brenner {b_idx}: Modulation")
+
+                # Heat pump / Compressors
                 comp_active = self.safe_get(device, "getCompressorActive")
                 if comp_active is not None:
                     record(f"{dev_prefix}/compressor/active", "1" if comp_active else "0", "", "Kompressor aktiv")
@@ -651,6 +704,43 @@ class VitoconnectDaemon:
                 comp_hours = self.safe_get(device, "getCompressorHours")
                 if comp_hours is not None:
                     record(f"{dev_prefix}/compressor/hours", comp_hours, "h", "Kompressor-Betriebsstunden")
+
+                comp_starts = self.safe_get(device, "getCompressorStarts")
+                if comp_starts is not None:
+                    record(f"{dev_prefix}/compressor/starts", comp_starts, "", "Kompressor-Starts")
+
+                compressors = getattr(device, "compressors", [])
+                for cp_idx, cp in enumerate(compressors):
+                    cp_prefix = f"{dev_prefix}/compressor_{cp_idx}"
+                    cp_act = self.safe_get(cp, "getActive")
+                    if cp_act is not None:
+                        record(f"{cp_prefix}/active", "1" if cp_act else "0", "", f"Kompressor {cp_idx}: Aktiv")
+                    cp_hrs = self.safe_get(cp, "getHours")
+                    if cp_hrs is not None:
+                        record(f"{cp_prefix}/hours", cp_hrs, "h", f"Kompressor {cp_idx}: Betriebsstunden")
+                    cp_str = self.safe_get(cp, "getStarts")
+                    if cp_str is not None:
+                        record(f"{cp_prefix}/starts", cp_str, "", f"Kompressor {cp_idx}: Starts")
+                    cp_inlet = self.safe_get(cp, "getInletTemperature")
+                    if cp_inlet is not None:
+                        record(f"{cp_prefix}/temperature/inlet", round(cp_inlet, 2), "°C", f"Kompressor {cp_idx}: Eintrittstemperatur")
+                    cp_outlet = self.safe_get(cp, "getOutletTemperature")
+                    if cp_outlet is not None:
+                        record(f"{cp_prefix}/temperature/outlet", round(cp_outlet, 2), "°C", f"Kompressor {cp_idx}: Austrittstemperatur")
+
+                # Inverters / Condensors / Evaporators
+                inverters = getattr(device, "inverters", [])
+                for inv_idx, inv in enumerate(inverters):
+                    inv_prefix = f"{dev_prefix}/inverter_{inv_idx}"
+                    inv_pwr = self.safe_get(inv, "getPower")
+                    if inv_pwr is not None:
+                        record(f"{inv_prefix}/power", inv_pwr, "W", f"Inverter {inv_idx}: Leistung")
+                    inv_cur = self.safe_get(inv, "getCurrent")
+                    if inv_cur is not None:
+                        record(f"{inv_prefix}/current", inv_cur, "A", f"Inverter {inv_idx}: Strom")
+                    inv_temp = self.safe_get(inv, "getTemperature")
+                    if inv_temp is not None:
+                        record(f"{inv_prefix}/temperature", round(inv_temp, 2), "°C", f"Inverter {inv_idx}: Temperatur")
 
                 set_prefix = f"{self.base_topic}/set"
                 if len(self.devices) > 1:
@@ -665,13 +755,72 @@ class VitoconnectDaemon:
                 if dhw_target is not None:
                     record(f"{dev_prefix}/dhw/target_temperature", round(dhw_target, 2), "°C", "Warmwasser-Sollwert", writable=True, set_topic=f"{set_prefix}/dhw/target_temperature")
 
+                dhw_temp_top = self.safe_get(device, "getHotWaterStorageTemperatureTop")
+                if dhw_temp_top is not None:
+                    record(f"{dev_prefix}/dhw/temperature_top", round(dhw_temp_top, 2), "°C", "Warmwassertemperatur (Oben)")
+
+                dhw_temp_mid = self.safe_get(device, "getDomesticHotWaterStorageTemperatureMiddle")
+                if dhw_temp_mid is not None:
+                    record(f"{dev_prefix}/dhw/temperature_middle", round(dhw_temp_mid, 2), "°C", "Warmwassertemperatur (Mitte)")
+
+                dhw_temp_bot = self.safe_get(device, "getHotWaterStorageTemperatureBottom")
+                if dhw_temp_bot is not None:
+                    record(f"{dev_prefix}/dhw/temperature_bottom", round(dhw_temp_bot, 2), "°C", "Warmwassertemperatur (Unten)")
+
+                dhw_outlet = self.safe_get(device, "getDomesticHotWaterOutletTemperature")
+                if dhw_outlet is not None:
+                    record(f"{dev_prefix}/dhw/outlet_temperature", round(dhw_outlet, 2), "°C", "Warmwasser Auslauftemperatur")
+
                 dhw_pump = self.safe_get(device, "getDomesticHotWaterCirculationPump")
+                if dhw_pump is None:
+                    dhw_pump = self.safe_get(device, "getDomesticHotWaterCirculationPumpActive")
                 if dhw_pump is not None:
                     record(f"{dev_prefix}/dhw/circulation_pump", "1" if dhw_pump else "0", "", "Warmwasser-Zirkulationspumpe")
 
                 dhw_charge = self.safe_get(device, "getDomesticHotWaterOneTimeCharge")
+                if dhw_charge is None:
+                    dhw_charge = self.safe_get(device, "getOneTimeCharge")
                 if dhw_charge is not None:
                     record(f"{dev_prefix}/dhw/one_time_charge", "1" if dhw_charge else "0", "", "Einmalige Warmwasserbereitung", writable=True, set_topic=f"{set_prefix}/dhw/one_time_charge")
+
+                dhw_charging = self.safe_get(device, "getDomesticHotWaterChargingActive")
+                if dhw_charging is not None:
+                    record(f"{dev_prefix}/dhw/charging_active", "1" if dhw_charging else "0", "", "Warmwasser-Ladung aktiv")
+
+                # Solar System
+                solar_col = self.safe_get(device, "getSolarCollectorTemperature")
+                if solar_col is not None:
+                    record(f"{dev_prefix}/solar/collector_temperature", round(solar_col, 2), "°C", "Solarkollektor Temperatur")
+
+                solar_stg = self.safe_get(device, "getSolarStorageTemperature")
+                if solar_stg is not None:
+                    record(f"{dev_prefix}/solar/storage_temperature", round(solar_stg, 2), "°C", "Solarspeicher Temperatur")
+
+                solar_pump = self.safe_get(device, "getSolarPumpActive")
+                if solar_pump is not None:
+                    record(f"{dev_prefix}/solar/pump_active", "1" if solar_pump else "0", "", "Solarpumpe aktiv")
+
+                solar_pwr = self.safe_get(device, "getSolarPowerProductionToday")
+                if solar_pwr is not None:
+                    record(f"{dev_prefix}/solar/power_production_today", solar_pwr, "kWh", "Solar-Ertrag Heute")
+
+                # Power & Energy Consumption Statistics
+                power_today = self.safe_get(device, "getPowerConsumptionHeatingToday")
+                if power_today is not None:
+                    record(f"{dev_prefix}/power/heating_today", power_today, "kWh", "Stromverbrauch Heizung Heute")
+
+                power_sum_day = self.safe_get(device, "getPowerSummaryConsumptionHeatingCurrentDay")
+                if power_sum_day is not None:
+                    record(f"{dev_prefix}/power/heating_current_day", power_sum_day, "kWh", "Stromverbrauch Heizung (aktueller Tag)")
+
+                dhw_power_today = self.safe_get(device, "getPowerConsumptionDomesticHotWaterToday")
+                if dhw_power_today is not None:
+                    record(f"{dev_prefix}/power/dhw_today", dhw_power_today, "kWh", "Stromverbrauch Warmwasser Heute")
+
+                # Supply Pressure (if supported)
+                pressure = self.safe_get(device, "getSupplyPressure")
+                if pressure is not None:
+                    record(f"{dev_prefix}/pressure/supply", round(pressure, 2), "bar", "Anlagendruck / Vorlaufdruck")
 
                 # Errors
                 active_errors = self.safe_get(device, "getActiveErrors", [])
@@ -693,6 +842,14 @@ class VitoconnectDaemon:
                     program = self.safe_get(circuit, "getActiveProgram")
                     if program is not None:
                         record(f"{c_prefix}/program", program, "", f"Heizkreis {c_idx}: Aktives Programm")
+
+                    target_t = self.safe_get(circuit, "getTargetTemperature")
+                    if target_t is not None:
+                        record(f"{c_prefix}/target_temperature", target_t, "°C", f"Heizkreis {c_idx}: Aktuelle Solltemperatur")
+
+                    room_t = self.safe_get(circuit, "getRoomTemperature")
+                    if room_t is not None:
+                        record(f"{c_prefix}/room_temperature", round(room_t, 2), "°C", f"Heizkreis {c_idx}: Raumtemperatur")
 
                     normal_t = self.safe_get(circuit, "getNormalTargetTemperature")
                     if normal_t is not None:
@@ -717,6 +874,66 @@ class VitoconnectDaemon:
                     c_supply = self.safe_get(circuit, "getSupplyTemperature")
                     if c_supply is not None:
                         record(f"{c_prefix}/supply_temperature", round(c_supply, 2), "°C", f"Heizkreis {c_idx}: Vorlauftemperatur")
+
+                    c_pump = self.safe_get(circuit, "getCirculationPumpActive")
+                    if c_pump is not None:
+                        record(f"{c_prefix}/pump_active", "1" if c_pump else "0", "", f"Heizkreis {c_idx}: Umwälzpumpe aktiv")
+
+                    c_frost = self.safe_get(circuit, "getFrostProtectionActive")
+                    if c_frost is not None:
+                        record(f"{c_prefix}/frost_protection_active", "1" if c_frost else "0", "", f"Heizkreis {c_idx}: Frostschutz aktiv")
+
+                # Dynamic Raw Feature Scanner:
+                # Viessmann provides many more granular features in the cached features list.
+                # We inspect all features and extract any values (numbers, booleans, strings) so all datapoints are available.
+                raw_cfg = getattr(device, "_raw_config", None)
+                if raw_cfg and hasattr(raw_cfg, "get_raw_json"):
+                    try:
+                        raw_data = raw_cfg.get_raw_json()
+                        feature_list = raw_data.get("data", []) if isinstance(raw_data, dict) else []
+                        for f_item in feature_list:
+                            f_name = f_item.get("feature", "")
+                            if not f_name:
+                                continue
+                            f_props = f_item.get("properties", {})
+                            if not isinstance(f_props, dict):
+                                continue
+                            
+                            # Check for writable commands
+                            commands = f_item.get("commands", {})
+                            is_writable = bool(commands)
+                            
+                            for p_key, p_val in f_props.items():
+                                if not isinstance(p_val, dict):
+                                    continue
+                                val = p_val.get("value")
+                                unit = p_val.get("unit", "")
+                                p_type = p_val.get("type", "")
+
+                                # Handle lists/arrays (e.g. error lists, schedule lists, daily values)
+                                if isinstance(val, list):
+                                    if len(val) == 1 and isinstance(val[0], (int, float, str, bool)):
+                                        val = val[0]
+                                    else:
+                                        val = json.dumps(val)
+                                elif isinstance(val, dict):
+                                    val = json.dumps(val)
+
+                                if val is not None:
+                                    # Normalize boolean representation
+                                    if isinstance(val, bool):
+                                        val = "1" if val else "0"
+
+                                    feat_slug = f_name.replace(".", "/")
+                                    prop_slug = p_key.replace(".", "/")
+                                    f_topic = f"{dev_prefix}/features/{feat_slug}/{prop_slug}"
+                                    f_set = f"{set_prefix}/features/{feat_slug}" if is_writable else None
+                                    
+                                    # Record with feature name as description
+                                    desc_label = f"{f_name}.{p_key}"
+                                    record(f_topic, val, unit=unit, desc=desc_label, writable=is_writable, set_topic=f_set)
+                    except Exception as ex:
+                        logger.debug(f"Dynamic feature scanning skipped for {dev_prefix}: {ex}")
 
             # Quota info
             calls_24h = self.quota.count_24h()
