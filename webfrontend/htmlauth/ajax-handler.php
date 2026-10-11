@@ -228,10 +228,27 @@ if ($action == "get_daemon_diagnostics") {
                 $reason_text = "Python Virtual Environment (venv) fehlt noch. Bitte auf 'PyViCare aktualisieren' klicken oder Plugin neu installieren.";
             } elseif ($last_error) {
                 $reason_code = "CRASH_OR_ERROR";
-                $reason_text = "Dienst hat einen Fehler gemeldet: " . $last_error;
+                if (stripos($last_error, "InvalidCredentials") !== false || stripos($last_error, "Authentication failed") !== false) {
+                    $reason_text = "Viessmann-Anmeldung fehlgeschlagen! Bitte E-Mail, Passwort und Client-ID prüfen. Im Viessmann Developer Portal muss die Redirect URI 'http://localhost:4200/' sein und reCAPTCHA deaktiviert sein.";
+                } elseif (stripos($last_error, "return code 5") !== false || stripos($last_error, "not authorized") !== false) {
+                    $reason_text = "MQTT-Verbindung abgewiesen (Nicht autorisiert / Return Code 5). Bitte Benutzer und Passwort im LoxBerry MQTT Gateway prüfen.";
+                } else {
+                    $reason_text = "Dienst hat einen Fehler gemeldet: " . $last_error;
+                }
             } else {
                 $reason_code = "STOPPED_MANUALLY";
                 $reason_text = "Dienst ist momentan gestoppt (oder wurde noch nicht gestartet).";
+            }
+        }
+    } else {
+        // Daemon is running, but might have runtime connection issues
+        if ($last_error) {
+            if (stripos($last_error, "InvalidCredentials") !== false || stripos($last_error, "Authentication failed") !== false) {
+                $reason_code = "AUTH_ERROR";
+                $reason_text = "Dienst läuft, aber Viessmann-Anmeldung fehlgeschlagen! Bitte Zugangsdaten und Redirect URI ('http://localhost:4200/') im Developer Portal prüfen.";
+            } elseif (stripos($last_error, "return code 5") !== false || stripos($last_error, "not authorized") !== false) {
+                $reason_code = "MQTT_AUTH_ERROR";
+                $reason_text = "Dienst läuft, aber MQTT-Broker verweigert Verbindung (Return Code 5: nicht autorisiert). MQTT Gateway Zugangsdaten prüfen.";
             }
         }
     }

@@ -147,28 +147,33 @@ class VitoconnectDaemon:
 
         self.base_topic = mqtt_cfg.get("topic", "vitoconnect").strip("/")
 
-        host = mqtt_cfg.get("host", "").strip()
-        user = mqtt_cfg.get("user", "")
-        password = mqtt_cfg.get("pass", "")
+        host = (mqtt_cfg.get("host") or "").strip()
+        user = (mqtt_cfg.get("user") or "").strip()
+        password = mqtt_cfg.get("pass") or ""
         port = 1883
 
         # Auto-detect LoxBerry MQTT Gateway if host is empty
         if not host:
-            shm_mqtt = Path("/dev/shm/mqttgateway.json")
-            if not shm_mqtt.exists():
-                shm_mqtt = Path("/run/shm/mqttgateway.json")
-
-            if shm_mqtt.exists():
-                try:
-                    with open(shm_mqtt, "r") as f:
-                        gw = json.load(f)
-                    host = gw.get("brokeraddress", "127.0.0.1")
-                    port = int(gw.get("brokerport", 1883))
-                    user = gw.get("brokeruser", "")
-                    password = gw.get("brokerpass", "")
-                    logger.info(f"Using LoxBerry MQTT Gateway settings from {shm_mqtt}")
-                except Exception as e:
-                    logger.warning(f"Could not read MQTT Gateway config: {e}")
+            shm_candidates = [
+                Path("/dev/shm/mqttgateway.json"),
+                Path("/run/shm/mqttgateway.json"),
+                Path(LBHOMEDIR) / "config" / "plugins" / "mqttgateway" / "mqtt.json",
+            ]
+            for cand in shm_candidates:
+                if cand.exists():
+                    try:
+                        with open(cand, "r") as f:
+                            gw = json.load(f)
+                        # Handle main / mqtt section differences
+                        main_sec = gw.get("Main", gw)
+                        host = str(main_sec.get("brokeraddress", "127.0.0.1")).strip()
+                        port = int(main_sec.get("brokerport", 1883))
+                        user = str(main_sec.get("brokeruser", "")).strip()
+                        password = str(main_sec.get("brokerpass", ""))
+                        logger.info(f"Using LoxBerry MQTT Gateway settings from {cand}")
+                        break
+                    except Exception as e:
+                        logger.warning(f"Could not read MQTT Gateway config from {cand}: {e}")
 
         # Fallback to localhost if still empty
         if not host:
@@ -195,9 +200,9 @@ class VitoconnectDaemon:
             logger.error("PyViCare library is not installed in current environment!")
             return False
 
-        user = self.config.get("user")
-        password = self.config.get("pass")
-        client_id = self.config.get("apikey")
+        user = (self.config.get("user") or "").strip()
+        password = (self.config.get("pass") or "").strip()
+        client_id = (self.config.get("apikey") or "").strip()
 
         if not user or not password or not client_id:
             logger.error("Viessmann credentials (user, pass, apikey) are missing in config.")
@@ -221,7 +226,15 @@ class VitoconnectDaemon:
             logger.error("Viessmann API rate limit reached! Pausing requests.")
             return False
         except Exception as e:
-            logger.error(f"Failed to connect to Viessmann API: {e}", exc_info=True)
+            err_type = type(e).__name__
+            if "InvalidCredentials" in err_type:
+                logger.error(
+                    f"Viessmann API Authentication failed ({err_type})! "
+                    "Bitte E-Mail, Passwort und Client-ID prüfen. Sicherstellen, dass im Viessmann Developer Portal "
+                    "die Redirect URI auf 'http://localhost:4200/' gesetzt ist und reCAPTCHA deaktiviert ist."
+                )
+            else:
+                logger.error(f"Failed to connect to Viessmann API ({err_type}): {e}", exc_info=True)
             return False
 
     def init_mqtt(self):
@@ -236,10 +249,27 @@ class VitoconnectDaemon:
             return True
 
         client_id = f"loxberry_vitoconnect_{os.getpid()}"
-        self.mqtt_client = mqtt.Client(client_id=client_id)
 
-        if settings["user"]:
-            self.mqtt_client.username_pw_set(settings["user"], settings["password"])
+        # Support paho-mqtt v2 while maintaining compatibility with v1
+        try:
+            if hasattr(mqtt, "CallbackAPIVersion"):
+                self.mqtt_client = mqtt.Client(
+                    callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+                    client_id=client_id,
+                )
+            else:
+                self.mqtt_client = mqtt.Client(client_id=client_id)
+        except Exception as e:
+            logger.warning(f"MQTT client creation fallback: {e}")
+            self.mqtt_client = mqtt.Client(client_id=client_id)
+
+        user = settings.get("user")
+        pwd = settings.get("password")
+        if user:
+            self.mqtt_client.username_pw_set(user, pwd)
+            logger.info(f"MQTT using authentication for user '{user}'")
+        else:
+            logger.info("MQTT connecting without authentication (anonymous)")
 
         self.mqtt_client.on_connect = self._on_mqtt_connect
         self.mqtt_client.on_message = self._on_mqtt_message
@@ -253,8 +283,9 @@ class VitoconnectDaemon:
             logger.error(f"Could not connect to MQTT Broker: {e}")
             return False
 
-    def _on_mqtt_connect(self, client, userdata, flags, rc):
-        if rc == 0:
+    def _on_mqtt_connect(self, client, userdata, flags, rc, properties=None):
+        rc_code = getattr(rc, "value", rc)
+        if rc_code == 0:
             logger.info("Connected to MQTT Broker.")
             set_topic = f"{self.base_topic}/set/#"
             client.subscribe(set_topic)
@@ -262,7 +293,15 @@ class VitoconnectDaemon:
             logger.info(f"Subscribed to command topics: {set_topic}")
             self.publish(f"{self.base_topic}/status", "online", retain=True, force=True)
         else:
-            logger.error(f"MQTT connect failed with return code {rc}")
+            err_hints = {
+                1: "Connection refused: incorrect protocol version",
+                2: "Connection refused: invalid client identifier",
+                3: "Connection refused: server unavailable",
+                4: "Connection refused: bad username or password",
+                5: "Connection refused: not authorized (Bitte MQTT Gateway Benutzer/Passwort prüfen)",
+            }
+            hint = err_hints.get(rc_code, f"Return Code {rc_code}")
+            logger.error(f"MQTT connect failed: {hint} (rc={rc_code})")
 
     def _on_mqtt_message(self, client, userdata, msg):
         topic = msg.topic
@@ -593,19 +632,48 @@ class VitoconnectDaemon:
         self.update_stats_file()
         last_poll_time = 0
         last_config_check = 0
+        last_auth_attempt = 0
+        auth_backoff = 300  # wait 5 min after auth failure before retrying Viessmann
+        last_cfg_mtime = self.config_path.stat().st_mtime if self.config_path.exists() else 0
 
         while self.running:
             now = time.time()
 
-            # If credentials are not yet available, check periodically for config update
+            # Check if config file was modified in Web-UI
+            if now - last_config_check >= 5:
+                last_config_check = now
+                if self.config_path.exists():
+                    try:
+                        curr_mtime = self.config_path.stat().st_mtime
+                        if curr_mtime != last_cfg_mtime:
+                            last_cfg_mtime = curr_mtime
+                            logger.info("Configuration change detected on disk. Reloading...")
+                            self.load_config()
+                            # Reset auth backoff on new config
+                            last_auth_attempt = 0
+                            if not self.mqtt_client or not self.mqtt_client.is_connected():
+                                self.init_mqtt()
+                            self.init_vicare()
+                    except Exception as e:
+                        logger.warning(f"Error checking config file modification: {e}")
+
+            # If credentials are not yet available, wait
             has_creds = bool(self.config and self.config.get("user") and self.config.get("apikey"))
             if not has_creds:
-                if now - last_config_check >= 5:
-                    last_config_check = now
-                    if self.load_config():
-                        logger.info("New configuration detected. Initializing...")
-                        self.init_mqtt()
-                        self.init_vicare()
+                time.sleep(1)
+                continue
+
+            # Viessmann authentication retry with backoff if not connected
+            if not self.vicare or not self.devices:
+                if now - last_auth_attempt >= auth_backoff:
+                    last_auth_attempt = now
+                    logger.info("Retrying Viessmann API authentication...")
+                    self.init_vicare()
+                else:
+                    time.sleep(1)
+                    continue
+
+            if not self.devices:
                 time.sleep(1)
                 continue
 
@@ -618,8 +686,6 @@ class VitoconnectDaemon:
             if self.force_poll or (now - last_poll_time >= actual_interval):
                 self.force_poll = False
                 last_poll_time = now
-                if not self.vicare or not self.devices:
-                    self.init_vicare()
                 self.poll_and_publish()
 
             time.sleep(1)
