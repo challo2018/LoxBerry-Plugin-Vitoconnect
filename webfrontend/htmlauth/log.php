@@ -22,30 +22,47 @@ $plugin_dir = defined("LBPPLUGINDIR") ? LBPPLUGINDIR : "Vitoconnect";
 <style>
 .mono {
 	font-family: monospace;
-	font-size: 105%;
+	font-size: 100%;
 	font-weight: bold;
 }
 .card-box {
-	background: #fdfdfd;
-	border: 1px solid #d0d0d0;
-	border-radius: 6px;
-	padding: 15px;
-	margin-bottom: 20px;
+	background: #ffffff;
+	border: 1px solid #dcdde1;
+	border-radius: 8px;
+	padding: 18px 20px;
+	margin-bottom: 22px;
+	box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.card-header {
+	font-size: 1.15rem;
+	font-weight: 600;
+	color: #2f3640;
+	margin: 0 0 14px 0;
+	padding-bottom: 8px;
+	border-bottom: 2px solid #f1f2f6;
+}
+.header-flex {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
 }
 .console-box {
 	background: #1e1e1e;
 	color: #d4d4d4;
 	font-family: 'Courier New', Courier, monospace;
-	font-size: 90%;
-	line-height: 1.4;
-	padding: 12px;
-	border-radius: 5px;
+	font-size: 88%;
+	line-height: 1.45;
+	padding: 14px;
+	border-radius: 6px;
 	height: 380px;
-	max-height: 500px;
+	max-height: 520px;
 	overflow-y: auto;
 	white-space: pre-wrap;
 	word-break: break-all;
 	border: 1px solid #333;
+	margin-top: 10px;
 }
 .log-err {
 	color: #ff6b6b;
@@ -59,46 +76,64 @@ $plugin_dir = defined("LBPPLUGINDIR") ? LBPPLUGINDIR : "Vitoconnect";
 	color: #1dd1a1;
 }
 .badge-status-ok {
-	background: #28a745;
+	background: #10b981;
 	color: white;
-	padding: 4px 10px;
-	border-radius: 4px;
-	font-weight: bold;
+	padding: 3px 10px;
+	border-radius: 12px;
+	font-size: 0.85rem;
+	font-weight: 600;
+	display: inline-block;
 }
 .badge-status-err {
-	background: #dc3545;
+	background: #ef4444;
 	color: white;
-	padding: 4px 10px;
-	border-radius: 4px;
-	font-weight: bold;
+	padding: 3px 10px;
+	border-radius: 12px;
+	font-size: 0.85rem;
+	font-weight: 600;
+	display: inline-block;
 }
 .diag-alert {
-	padding: 10px 15px;
-	border-radius: 4px;
-	margin-top: 10px;
-	font-size: 95%;
+	padding: 10px 14px;
+	border-radius: 6px;
+	margin-top: 12px;
+	font-size: 92%;
 }
 .diag-alert-danger {
-	background-color: #f8d7da;
-	color: #721c24;
-	border: 1px solid #f5c6cb;
+	background-color: #fee2e2;
+	color: #991b1b;
+	border: 1px solid #fecaca;
 }
 .diag-alert-success {
-	background-color: #d4edda;
-	color: #155724;
-	border: 1px solid #c3e6cb;
+	background-color: #dcfce7;
+	color: #166534;
+	border: 1px solid #bbf7d0;
+}
+@media (max-width: 640px) {
+	.card-box {
+		padding: 14px;
+	}
+	.card-header {
+		font-size: 1.05rem;
+	}
+	.console-box {
+		height: 280px;
+		font-size: 80%;
+		padding: 10px;
+	}
 }
 </style>
 
 <!-- DIENST-DIAGNOSE & STATUS -->
 <div class="card-box" id="diag-container">
-	<div class="wide">Dienst-Status & Fehler-Diagnose</div>
-	<div class="ui-grid-a" style="margin-top: 10px;">
-		<div class="ui-block-a">
-			<b>Aktueller Zustand:</b> <span id="diag-badge"><span class="badge-status-err">Prüfe Status...</span></span>
-			<span id="diag-pid" style="margin-left: 10px; color: #666;"></span>
+	<h3 class="card-header">Dienst-Status & Fehler-Diagnose</h3>
+	<div class="header-flex">
+		<div>
+			<span style="font-size: 90%; color: #64748b; font-weight: bold;">ZUSTAND:</span>
+			<span id="diag-badge" style="margin-left: 6px;"><span class="badge-status-err">Prüfe Status...</span></span>
+			<span id="diag-pid" style="margin-left: 8px; color: #64748b; font-size: 85%;"></span>
 		</div>
-		<div class="ui-block-b" style="text-align: right;">
+		<div>
 			<button class="ui-btn ui-btn-inline ui-mini" id="btn-start">Starten</button>
 			<button class="ui-btn ui-btn-inline ui-mini" id="btn-restart">Neustarten</button>
 			<button class="ui-btn ui-btn-inline ui-mini" id="btn-stop">Stoppen</button>
@@ -113,12 +148,12 @@ $plugin_dir = defined("LBPPLUGINDIR") ? LBPPLUGINDIR : "Vitoconnect";
 
 <!-- LIVE DAEMON LOG CONSOLE -->
 <div class="card-box">
-	<div class="ui-grid-a" style="margin-bottom: 8px;">
-		<div class="ui-block-a">
-			<span class="wide" style="font-size: 110%;">Live Daemon Log (<span id="log-filename">daemon.log</span>)</span>
+	<div class="header-flex">
+		<div>
+			<h3 class="card-header" style="margin: 0; border: none; padding: 0;">Live Daemon Log (<span id="log-filename" style="color: #64748b; font-size: 90%;">daemon.log</span>)</h3>
 		</div>
-		<div class="ui-block-b" style="text-align: right;">
-			<label style="display: inline-block; margin-right: 15px;"><input type="checkbox" id="auto-refresh-log" checked> Auto-Refresh (3s)</label>
+		<div style="display: flex; align-items: center; gap: 8px;">
+			<label style="margin: 0; font-size: 85%;"><input type="checkbox" id="auto-refresh-log" checked> Auto-Refresh (3s)</label>
 			<button class="ui-btn ui-btn-inline ui-mini" id="btn-refresh-log">Aktualisieren</button>
 			<button class="ui-btn ui-btn-inline ui-mini" id="btn-clear-log">Log leeren</button>
 		</div>
@@ -129,8 +164,8 @@ $plugin_dir = defined("LBPPLUGINDIR") ? LBPPLUGINDIR : "Vitoconnect";
 
 <!-- LOXBERRY LOGFILES ARCHIV -->
 <div class="card-box">
-	<div class="wide">LoxBerry System-Logdateien</div>
-	<p>Hier findest du alle Logfiles dieses Plugins zur detaillierten Fehleranalyse und für Supportanfragen im LoxForum:</p>
+	<h3 class="card-header">LoxBerry System-Logdateien</h3>
+	<p style="font-size: 90%; color: #475569; margin: 0 0 10px 0;">Hier findest du alle Logfiles dieses Plugins zur detaillierten Fehleranalyse und für Supportanfragen im LoxForum:</p>
 
 <?php
 if ($handle = opendir($lbplogdir)) {
@@ -190,7 +225,6 @@ function controlDaemon(cmd) {
 function loadDiagnostics(isAuto) {
 	$.getJSON("ajax-handler.php?action=get_daemon_diagnostics")
 	.done(function(data) {
-		// Update Status Badge
 		if (data.is_running) {
 			$("#diag-badge").html('<span class="badge-status-ok">Aktiv & Läuft</span>');
 			$("#diag-pid").text("(PID: " + data.pid + ")");
@@ -205,7 +239,6 @@ function loadDiagnostics(isAuto) {
 			$("#diag-reason-text").text(data.reason_text || "Dienst ist nicht gestartet.");
 		}
 
-		// Update Log Console
 		if (data.log_content !== undefined) {
 			var formatted = formatLogText(data.log_content);
 			var consoleBox = $("#log-console");

@@ -29,86 +29,171 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 <style>
 .mono {
 	font-family: monospace;
-	font-size: 105%;
+	font-size: 100%;
 	font-weight: bold;
 	color: #007000;
+	word-break: break-all;
+}
+.card-box {
+	background: #ffffff;
+	border: 1px solid #dcdde1;
+	border-radius: 8px;
+	padding: 18px 20px;
+	margin-bottom: 22px;
+	box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.card-header {
+	font-size: 1.15rem;
+	font-weight: 600;
+	color: #2f3640;
+	margin: 0 0 14px 0;
+	padding-bottom: 8px;
+	border-bottom: 2px solid #f1f2f6;
+}
+.stats-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+	gap: 14px;
+	margin-top: 10px;
+}
+.stat-card {
+	background: #f8fafc;
+	border: 1px solid #e2e8f0;
+	border-radius: 6px;
+	padding: 12px 14px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+.stat-label {
+	font-size: 0.85rem;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	font-weight: 700;
+	color: #718096;
+	margin-bottom: 6px;
+}
+.stat-value {
+	font-size: 1.05rem;
+	font-weight: bold;
+	color: #2d3748;
+}
+.table-responsive {
+	width: 100%;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	margin-top: 10px;
 }
 .topic-table {
 	width: 100%;
 	border-collapse: collapse;
-	margin-top: 10px;
+	font-size: 90%;
 }
 .topic-table th, .topic-table td {
-	border: 1px solid #d0d0d0;
-	padding: 8px 12px;
+	border: 1px solid #e2e8f0;
+	padding: 9px 12px;
 	text-align: left;
 }
 .topic-table th {
-	background-color: #6dac20;
-	color: white;
+	background-color: #f1f5f9;
+	color: #334155;
+	font-weight: 700;
 }
 .topic-table tr:nth-child(even) {
-	background-color: #f9f9f9;
+	background-color: #f8fafc;
 }
-.card-box {
-	background: #fdfdfd;
-	border: 1px solid #d0d0d0;
-	border-radius: 6px;
-	padding: 15px;
-	margin-bottom: 20px;
+.topic-table tr:hover {
+	background-color: #f1f5f9;
 }
 .badge-write {
-	background: #17a2b8;
+	background: #0284c7;
 	color: white;
-	padding: 2px 6px;
-	border-radius: 3px;
-	font-size: 80%;
-	font-weight: bold;
+	padding: 2px 7px;
+	border-radius: 10px;
+	font-size: 78%;
+	font-weight: 600;
+	display: inline-block;
 }
 .badge-read {
-	background: #6c757d;
+	background: #64748b;
 	color: white;
-	padding: 2px 6px;
-	border-radius: 3px;
-	font-size: 80%;
-	font-weight: bold;
+	padding: 2px 7px;
+	border-radius: 10px;
+	font-size: 78%;
+	font-weight: 600;
+	display: inline-block;
 }
 .copy-btn {
 	cursor: pointer;
-	padding: 2px 6px;
+	padding: 2px 8px;
 	font-size: 80%;
-	margin-left: 5px;
+	margin-left: 6px;
+}
+.test-panel-grid {
+	display: grid;
+	grid-template-columns: 2fr 1fr auto;
+	gap: 12px;
+	align-items: end;
+	margin-top: 10px;
+}
+@media (max-width: 768px) {
+	.card-box {
+		padding: 14px;
+	}
+	.card-header {
+		font-size: 1.05rem;
+	}
+	.stats-grid {
+		grid-template-columns: 1fr;
+		gap: 10px;
+	}
+	.test-panel-grid {
+		grid-template-columns: 1fr;
+	}
 }
 </style>
 
 <!-- STATUS & HEADER -->
 <div class="card-box">
-	<div class="wide">Dienst-Status & Live-Zähler</div>
-	<div class="ui-grid-b" style="margin-top: 10px;">
-		<div class="ui-block-a">
-			<b>Dienststatus:</b> <span id="stat-status">-</span><br>
-			<b>Erkannte Geräte:</b> <span id="stat-devices">-</span>
+	<h3 class="card-header">Dienst-Status & Live-Zähler</h3>
+	<div class="stats-grid">
+		<div class="stat-card">
+			<div>
+				<div class="stat-label">Dienststatus</div>
+				<div class="stat-value" id="stat-status">-</div>
+				<small style="color: #64748b;">Erkannte Geräte: <span id="stat-devices">-</span></small>
+			</div>
 		</div>
-		<div class="ui-block-b">
-			<b>API-Aufrufe (24h):</b> <span id="stat-calls">-</span> / 1.450<br>
-			<b>Verbleibend:</b> <b id="stat-remaining" style="color:green;">-</b>
+
+		<div class="stat-card">
+			<div>
+				<div class="stat-label">API-Aufrufe (24h)</div>
+				<div class="stat-value"><span id="stat-calls">-</span> / 1.450</div>
+				<small style="color: #16a34a;">Verbleibend: <b id="stat-remaining">-</b></small>
+			</div>
 		</div>
-		<div class="ui-block-c">
-			<b>Letzte Abfrage:</b> <span id="stat-lastpoll">-</span><br>
-			<button class="ui-btn ui-btn-inline ui-mini" id="btn-force-poll">Jetzt abfragen (Poll)</button>
+
+		<div class="stat-card">
+			<div>
+				<div class="stat-label">Letzte Abfrage</div>
+				<div class="stat-value" id="stat-lastpoll">-</div>
+			</div>
+			<div style="margin-top: 10px;">
+				<button class="ui-btn ui-btn-inline ui-mini" id="btn-force-poll">Jetzt abfragen (Poll)</button>
+			</div>
 		</div>
 	</div>
-	<div id="poll-msg" style="margin-top: 8px; font-weight: bold;"></div>
+	<div id="poll-msg" style="margin-top: 10px; font-weight: bold;"></div>
 </div>
 
 <!-- INTERAKTIVES TEST-PANEL (BEFEHLE SCHREIBEN) -->
-<div class="card-box" style="border-left: 5px solid #17a2b8;">
-	<div class="wide">Steuerung testen (Befehl an Viessmann senden)</div>
-	<p>Hier kannst du Steuerbefehle direkt über MQTT an deine Heizung senden, um die Funktion vor der Einbindung in Loxone Config zu testen.</p>
+<div class="card-box" style="border-left: 4px solid #0284c7;">
+	<h3 class="card-header" style="color: #0369a1;">Steuerung testen (Befehl an Viessmann senden)</h3>
+	<p style="font-size: 90%; color: #475569; margin: 0 0 10px 0;">Hier kannst du Steuerbefehle direkt über MQTT an deine Heizung senden, um die Funktion vor der Einbindung in Loxone Config zu testen.</p>
 
-	<div class="ui-grid-a">
-		<div class="ui-block-a" style="padding-right: 10px;">
-			<label for="test-target-select"><b>Ziel-Datenpunkt auswählen:</b></label>
+	<div class="test-panel-grid">
+		<div>
+			<label for="test-target-select" style="font-size: 85%; font-weight: bold;">Ziel-Datenpunkt auswählen:</label>
 			<select id="test-target-select">
 				<option value="<?=$mqtttopic;?>/set/circuit_0/normal_temperature">Heizkreis 0: Normal-Sollwert (z.B. 21.0)</option>
 				<option value="<?=$mqtttopic;?>/set/circuit_0/comfort_temperature">Heizkreis 0: Komfort-Sollwert (z.B. 23.0)</option>
@@ -118,100 +203,108 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 				<option value="<?=$mqtttopic;?>/set/dhw/one_time_charge">Warmwasser: Einmalige Aufheizung (start / stop)</option>
 			</select>
 		</div>
-		<div class="ui-block-b">
-			<label for="test-target-val"><b>Zu sendender Wert:</b></label>
-			<input type="text" id="test-target-val" placeholder="z. B. 21.5 oder dhwAndHeating">
+		<div>
+			<label for="test-target-val" style="font-size: 85%; font-weight: bold;">Zu sendender Wert:</label>
+			<input type="text" id="test-target-val" placeholder="z. B. 21.5">
+		</div>
+		<div>
+			<button class="ui-btn ui-btn-inline ui-btn-b ui-mini" id="btn-send-command">Befehl senden</button>
 		</div>
 	</div>
-
-	<div style="margin-top: 10px;">
-		<button class="ui-btn ui-btn-inline ui-btn-b ui-mini" id="btn-send-command">Befehl jetzt senden</button>
-		<span id="cmd-feedback" style="margin-left: 15px; font-weight: bold;"></span>
-	</div>
+	<div id="cmd-feedback" style="margin-top: 8px; font-weight: bold;"></div>
 </div>
 
 <!-- LIVE-TABELLE DER VERFÜGBAREN DATENPUNKTE -->
-<div class="wide">Live-Datenpunkte deiner Anlage</div>
-<p>
-	Diese Tabelle zeigt alle aktuell von deiner Viessmann-Anlage gemeldeten Datenpunkte mit aktuellem Live-Wert. 
-	Nutze das Suchfeld, um nach bestimmten Werten zu filtern. Klicke auf <b>[Kopieren]</b>, um das Topic für Loxone in die Zwischenablage zu kopieren.
-</p>
+<div class="card-box">
+	<h3 class="card-header">Live-Datenpunkte deiner Anlage</h3>
+	<p style="font-size: 90%; color: #475569; margin: 0 0 10px 0;">
+		Diese Tabelle zeigt alle aktuell von deiner Viessmann-Anlage gemeldeten Datenpunkte mit aktuellem Live-Wert. 
+		Nutze das Suchfeld, um nach bestimmten Werten zu filtern. Klicke auf <b>[Kopieren]</b>, um das Topic für Loxone in die Zwischenablage zu kopieren.
+	</p>
 
-<div class="ui-grid-a" style="margin-bottom: 10px;">
-	<div class="ui-block-a">
-		<input type="text" id="datapoint-search" placeholder="Filter nach Beschreibung oder Topic (z. B. Temperatur, Brenner, HK0)...">
+	<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px;">
+		<div style="flex: 1 1 280px;">
+			<input type="text" id="datapoint-search" placeholder="Filter nach Beschreibung oder Topic (z. B. Temperatur, Brenner, HK0)...">
+		</div>
+		<div>
+			<label style="font-size: 85%;"><input type="checkbox" id="auto-refresh-check" checked> Live-Aktualisierung (5s)</label>
+		</div>
 	</div>
-	<div class="ui-block-b" style="text-align: right; line-height: 40px;">
-		<label><input type="checkbox" id="auto-refresh-check" checked> Live-Aktualisierung alle 5s</label>
+
+	<div class="table-responsive">
+		<table class="topic-table" id="datapoints-table">
+			<thead>
+				<tr>
+					<th style="min-width: 180px;">Beschreibung / Sensor</th>
+					<th style="min-width: 120px;">Aktueller Wert</th>
+					<th style="min-width: 100px;">Typ</th>
+					<th style="min-width: 250px;">MQTT Topic (für Loxone)</th>
+					<th style="min-width: 80px;">Zeit</th>
+				</tr>
+			</thead>
+			<tbody id="datapoints-body">
+				<tr>
+					<td colspan="5" style="text-align: center; color: grey;">Lade Datenpunkte...</td>
+				</tr>
+			</tbody>
+		</table>
 	</div>
 </div>
 
-<table class="topic-table" id="datapoints-table">
-	<thead>
-		<tr>
-			<th style="width: 25%;">Beschreibung / Sensor</th>
-			<th style="width: 20%;">Aktueller Wert</th>
-			<th style="width: 10%;">Typ</th>
-			<th style="width: 35%;">MQTT Topic (für Loxone)</th>
-			<th style="width: 10%;">Zeitstempel</th>
-		</tr>
-	</thead>
-	<tbody id="datapoints-body">
-		<tr>
-			<td colspan="5" style="text-align: center; color: grey;">Lade Datenpunkte...</td>
-		</tr>
-	</tbody>
-</table>
+<!-- ÜBERSICHT STEUERBARER BEFEHLE -->
+<div class="card-box">
+	<h3 class="card-header">Übersicht steuerbarer Befehle (Schreiben)</h3>
+	<p style="font-size: 90%; color: #475569; margin: 0 0 10px 0;">Um diese Werte aus dem Loxone Miniserver zu ändern, sende eine Nachricht an das jeweilige <b>set-Topic</b>:</p>
 
-<h3 style="margin-top: 30px;">Übersicht steuerbarer Befehle (Schreiben)</h3>
-<p>Um diese Werte aus dem Loxone Miniserver zu ändern, sende eine Nachricht an das jeweilige <b>set-Topic</b>:</p>
-
-<table class="topic-table">
-	<thead>
-		<tr>
-			<th>Befehl / MQTT Topic</th>
-			<th>Erlaubte Werte</th>
-			<th>Wirkung</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr>
-			<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/normal_temperature</span></td>
-			<td>z. B. <span class="mono">20.5</span></td>
-			<td>Setzt die normale Raum-Solltemperatur (HK 0)</td>
-		</tr>
-		<tr>
-			<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/comfort_temperature</span></td>
-			<td>z. B. <span class="mono">22.0</span></td>
-			<td>Setzt die Komfort-Temperatur (HK 0)</td>
-		</tr>
-		<tr>
-			<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/reduced_temperature</span></td>
-			<td>z. B. <span class="mono">17.0</span></td>
-			<td>Setzt die reduzierte Absenktemperatur (HK 0)</td>
-		</tr>
-		<tr>
-			<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/mode</span></td>
-			<td><span class="mono">standby</span>, <span class="mono">dhw</span>, <span class="mono">dhwAndHeating</span></td>
-			<td>Wechselt die Betriebsart (HK 0)</td>
-		</tr>
-		<tr>
-			<td><span class="mono"><?=$mqtttopic;?>/set/dhw/target_temperature</span></td>
-			<td>z. B. <span class="mono">55.0</span></td>
-			<td>Setzt die Warmwasser-Solltemperatur</td>
-		</tr>
-		<tr>
-			<td><span class="mono"><?=$mqtttopic;?>/set/dhw/one_time_charge</span></td>
-			<td><span class="mono">start</span> (1) / <span class="mono">stop</span> (0)</td>
-			<td>Aktiviert oder stoppt die einmalige Warmwasserbereitung</td>
-		</tr>
-		<tr>
-			<td><span class="mono"><?=$mqtttopic;?>/poll</span></td>
-			<td><span class="mono">1</span></td>
-			<td>Löst einen sofortigen Abruf der API aus</td>
-		</tr>
-	</tbody>
-</table>
+	<div class="table-responsive">
+		<table class="topic-table">
+			<thead>
+				<tr>
+					<th>Befehl / MQTT Topic</th>
+					<th>Erlaubte Werte</th>
+					<th>Wirkung</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/normal_temperature</span></td>
+					<td>z. B. <span class="mono">20.5</span></td>
+					<td>Setzt die normale Raum-Solltemperatur (HK 0)</td>
+				</tr>
+				<tr>
+					<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/comfort_temperature</span></td>
+					<td>z. B. <span class="mono">22.0</span></td>
+					<td>Setzt die Komfort-Temperatur (HK 0)</td>
+				</tr>
+				<tr>
+					<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/reduced_temperature</span></td>
+					<td>z. B. <span class="mono">17.0</span></td>
+					<td>Setzt die reduzierte Absenktemperatur (HK 0)</td>
+				</tr>
+				<tr>
+					<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/mode</span></td>
+					<td><span class="mono">standby</span>, <span class="mono">dhw</span>, <span class="mono">dhwAndHeating</span></td>
+					<td>Wechselt die Betriebsart (HK 0)</td>
+				</tr>
+				<tr>
+					<td><span class="mono"><?=$mqtttopic;?>/set/dhw/target_temperature</span></td>
+					<td>z. B. <span class="mono">55.0</span></td>
+					<td>Setzt die Warmwasser-Solltemperatur</td>
+				</tr>
+				<tr>
+					<td><span class="mono"><?=$mqtttopic;?>/set/dhw/one_time_charge</span></td>
+					<td><span class="mono">start</span> (1) / <span class="mono">stop</span> (0)</td>
+					<td>Aktiviert oder stoppt die einmalige Warmwasserbereitung</td>
+				</tr>
+				<tr>
+					<td><span class="mono"><?=$mqtttopic;?>/poll</span></td>
+					<td><span class="mono">1</span></td>
+					<td>Löst einen sofortigen Abruf der API aus</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</div>
 
 <?php
 LBWeb::lbfooter();
@@ -224,12 +317,10 @@ $(document).ready(function() {
 	loadStats();
 	loadLiveValues();
 
-	// Search filter
 	$("#datapoint-search").on("keyup", function() {
 		filterTable($(this).val().toLowerCase());
 	});
 
-	// Force Poll
 	$("#btn-force-poll").click(function() {
 		$("#poll-msg").css("color", "blue").text("Sende Poll-Anforderung an Daemon...");
 		$.post("ajax-handler.php?action=send_command", { topic: "<?=$mqtttopic;?>/poll", value: "1" })
@@ -245,7 +336,6 @@ $(document).ready(function() {
 		});
 	});
 
-	// Send Command Test
 	$("#btn-send-command").click(function() {
 		var topic = $("#test-target-select").val();
 		var val = $("#test-target-val").val().trim();
@@ -267,7 +357,6 @@ $(document).ready(function() {
 		});
 	});
 
-	// Auto-refresh interval
 	autoRefreshTimer = setInterval(function() {
 		if ($("#auto-refresh-check").is(":checked")) {
 			loadStats();
@@ -279,7 +368,7 @@ $(document).ready(function() {
 function loadStats() {
 	$.getJSON("ajax-handler.php?action=get_stats")
 	.done(function(data) {
-		$("#stat-status").html(data.is_running ? "<span style='color:green;font-weight:bold;'>Online</span>" : "<span style='color:red;font-weight:bold;'>Gestoppt</span>");
+		$("#stat-status").html(data.is_running ? "<span style='color:#16a34a;font-weight:bold;'>Online</span>" : "<span style='color:#dc2626;font-weight:bold;'>Gestoppt</span>");
 		$("#stat-devices").text(data.devices_count !== undefined ? data.devices_count : "-");
 		$("#stat-calls").text(data.calls_24h !== undefined ? data.calls_24h : "-");
 		$("#stat-remaining").text(data.remaining_24h !== undefined ? data.remaining_24h : "-");
@@ -314,10 +403,10 @@ function loadLiveValues() {
 
 			html += "<tr class='dp-row' data-search='" + (desc + " " + topic).toLowerCase() + "'>";
 			html += "<td><b>" + escapeHtml(desc) + "</b></td>";
-			html += "<td><span style='font-size:110%;font-weight:bold;'>" + escapeHtml(String(val)) + unit + "</span></td>";
+			html += "<td><span style='font-size:105%;font-weight:bold;color:#1e293b;'>" + escapeHtml(String(val)) + unit + "</span></td>";
 			html += "<td>" + typeBadge + "</td>";
-			html += "<td><span class='mono'>" + escapeHtml(topic) + "</span> <button class='ui-btn ui-btn-inline ui-mini copy-btn' onclick=\"copyTopic('" + escapeHtml(topic) + "')\">Kopieren</button></td>";
-			html += "<td><small>" + ts + "</small></td>";
+			html += "<td><span class=\"mono\">" + escapeHtml(topic) + "</span> <button class=\"ui-btn ui-btn-inline ui-mini copy-btn\" onclick=\"copyTopic('" + escapeHtml(topic) + "')\">Kopieren</button></td>";
+			html += "<td><small style='color:#64748b;'>" + ts + "</small></td>";
 			html += "</tr>";
 		}
 		tbody.html(html);

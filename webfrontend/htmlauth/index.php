@@ -24,154 +24,218 @@ LBWeb::lbheader($template_title, $helplink, $helptemplate);
 	color: #007000;
 }
 .card-box {
-	background: #fdfdfd;
-	border: 1px solid #d0d0d0;
+	background: #ffffff;
+	border: 1px solid #dcdde1;
+	border-radius: 8px;
+	padding: 18px 20px;
+	margin-bottom: 22px;
+	box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.card-header {
+	font-size: 1.15rem;
+	font-weight: 600;
+	color: #2f3640;
+	margin: 0 0 14px 0;
+	padding-bottom: 8px;
+	border-bottom: 2px solid #f1f2f6;
+}
+.stats-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+	gap: 14px;
+	margin-top: 10px;
+}
+.stat-card {
+	background: #f8fafc;
+	border: 1px solid #e2e8f0;
 	border-radius: 6px;
-	padding: 15px;
-	margin-bottom: 20px;
-}
-.badge-ok {
-	background: #28a745;
-	color: white;
-	padding: 3px 8px;
-	border-radius: 4px;
-	font-size: 85%;
-	font-weight: bold;
-}
-.badge-warn {
-	background: #ffc107;
-	color: #212529;
-	padding: 3px 8px;
-	border-radius: 4px;
-	font-size: 85%;
-	font-weight: bold;
-}
-.badge-err {
-	background: #dc3545;
-	color: white;
-	padding: 3px 8px;
-	border-radius: 4px;
-	font-size: 85%;
-	font-weight: bold;
+	padding: 12px 14px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
 }
 .stat-label {
+	font-size: 0.85rem;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	font-weight: 700;
+	color: #718096;
+	margin-bottom: 6px;
+}
+.stat-value {
+	font-size: 1.05rem;
 	font-weight: bold;
-	color: #555;
+	color: #2d3748;
+}
+.badge-ok {
+	background: #10b981;
+	color: #ffffff;
+	padding: 3px 10px;
+	border-radius: 12px;
+	font-size: 0.85rem;
+	font-weight: 600;
+	display: inline-block;
+}
+.badge-warn {
+	background: #f59e0b;
+	color: #ffffff;
+	padding: 3px 10px;
+	border-radius: 12px;
+	font-size: 0.85rem;
+	font-weight: 600;
+	display: inline-block;
+}
+.badge-err {
+	background: #ef4444;
+	color: #ffffff;
+	padding: 3px 10px;
+	border-radius: 12px;
+	font-size: 0.85rem;
+	font-weight: 600;
+	display: inline-block;
+}
+@media (max-width: 640px) {
+	.card-box {
+		padding: 14px;
+	}
+	.card-header {
+		font-size: 1.05rem;
+	}
+	.stats-grid {
+		grid-template-columns: 1fr;
+		gap: 10px;
+	}
 }
 </style>
 
 <!-- STATUS & SERVICE CARD -->
 <div class="card-box">
-	<div class="wide">Dienst- und Bibliotheks-Status</div>
-	<div class="ui-grid-b" style="margin-top: 10px;">
-		<div class="ui-block-a">
-			<span class="stat-label">Hintergrunddienst:</span><br>
-			<span id="daemon-status-badge"><span class="badge-warn">Prüfe...</span></span>
-			<div style="margin-top: 8px;">
+	<h3 class="card-header">Dienst- und Bibliotheks-Status</h3>
+	<div class="stats-grid">
+		<div class="stat-card">
+			<div>
+				<div class="stat-label">Hintergrunddienst</div>
+				<div class="stat-value" id="daemon-status-badge"><span class="badge-warn">Prüfe...</span></div>
+			</div>
+			<div style="margin-top: 12px;">
 				<button class="ui-btn ui-btn-inline ui-mini" id="btn-daemon-restart">Dienst neustarten</button>
 			</div>
 		</div>
-		<div class="ui-block-b">
-			<span class="stat-label">PyViCare Bibliothek:</span><br>
-			Installiert: <b id="pyvicare-curr">-</b><br>
-			PyPI Version: <b id="pyvicare-pypi">-</b>
-			<div style="margin-top: 8px;">
+
+		<div class="stat-card">
+			<div>
+				<div class="stat-label">PyViCare Bibliothek</div>
+				<div class="stat-value">
+					Installiert: <span id="pyvicare-curr">-</span><br>
+					<small style="color: #666; font-weight: normal;">PyPI: <span id="pyvicare-pypi">-</span></small>
+				</div>
+			</div>
+			<div style="margin-top: 12px;">
 				<button class="ui-btn ui-btn-inline ui-mini" id="btn-pyvicare-update">PyViCare aktualisieren</button>
 			</div>
 		</div>
-		<div class="ui-block-c">
-			<span class="stat-label">Viessmann API Quota:</span><br>
-			Aufrufe (24h): <b id="quota-calls">-</b> / 1.450<br>
-			Verbleibend: <b id="quota-remaining">-</b>
-			<p class="hint" style="margin-top: 5px;">Kostenloses Limit: max. 1.450 Calls / 24 Std.</p>
+
+		<div class="stat-card">
+			<div>
+				<div class="stat-label">Viessmann API Quota</div>
+				<div class="stat-value">
+					Aufrufe: <span id="quota-calls">-</span> / 1.450<br>
+					<small style="color: green; font-weight: normal;">Verbleibend: <b id="quota-remaining">-</b></small>
+				</div>
+			</div>
+			<p class="hint" style="margin: 8px 0 0 0; font-size: 75%;">Max. 1.450 Calls / 24 Std.</p>
 		</div>
 	</div>
-	<div id="service-msg" style="margin-top: 10px; font-weight: bold;"></div>
+	<div id="service-msg" style="margin-top: 12px; font-weight: bold;"></div>
 </div>
 
 <!-- FORM SETTINGS -->
 <form id="form" onsubmit="return false;">
 
-<div class="wide">Viessmann Account & API</div>
-<p><i>Verbindet sich mit der Viessmann Developer API über die moderne <b>PyViCare</b> Bibliothek mit automatischem OAuth2 Token-Refresh.</i></p>
+<div class="card-box">
+	<h3 class="card-header">Viessmann Account & API</h3>
+	<p><i>Verbindet sich mit der Viessmann Developer API über die moderne <b>PyViCare</b> Bibliothek mit automatischem OAuth2 Token-Refresh.</i></p>
 
-<div data-role="fieldcontain">
-	<label for="user">E-Mail (Benutzername)</label>
-	<input name="user" id="user" type="text" />
-	<p class="hint">Deine E-Mail-Adresse des <i>Viessmann Developer Portal</i> bzw. ViCare Accounts.</p>
+	<div data-role="fieldcontain">
+		<label for="user">E-Mail (Benutzername)</label>
+		<input name="user" id="user" type="text" />
+		<p class="hint">Deine E-Mail-Adresse des <i>Viessmann Developer Portal</i> bzw. ViCare Accounts.</p>
+	</div>
+
+	<div data-role="fieldcontain">
+		<label for="pass">Passwort</label>
+		<input name="pass" id="pass" type="password">
+		<p class="hint">Das Passwort deines Viessmann Accounts.</p>
+	</div>
+
+	<div data-role="fieldcontain">
+		<label for="apikey">Client-ID (API-Key)</label>
+		<input name="apikey" id="apikey" type="text" />
+		<p class="hint">Die Client-ID aus dem <a href="https://developer.viessmann.com/" target="_blank">Viessmann Developer Portal</a>. (Redirect URI muss dort auf <span class="mono">http://localhost:4200/</span> oder Standard gesetzt sein).</p>
+	</div>
 </div>
 
-<div data-role="fieldcontain">
-	<label for="pass">Passwort</label>
-	<input name="pass" id="pass" type="password">
-	<p class="hint">Das Passwort deines Viessmann Accounts.</p>
+<div class="card-box">
+	<h3 class="card-header">Abfrage-Intervall</h3>
+
+	<div data-role="fieldcontain">
+		<label for="Cron.interval">Intervall</label>
+		<select name="Cron.interval" id="Cron.interval">
+			<option value="60">60 Sekunden (~1.440 Calls / Tag)</option>
+			<option value="120" selected>120 Sekunden (~720 Calls / Tag - Empfohlen)</option>
+			<option value="180">3 Minuten (~480 Calls / Tag)</option>
+			<option value="300">5 Minuten (~288 Calls / Tag)</option>
+			<option value="600">10 Minuten (~144 Calls / Tag)</option>
+			<option value="900">15 Minuten (~96 Calls / Tag)</option>
+		</select>
+		<p class="hint">Bestimmt, wie oft neue Werte von Viessmann abgerufen werden. <b>Empfehlung:</b> Mindestens 60-120 Sek., um das API-Tageslimit nicht zu überschreiten.</p>
+	</div>
 </div>
 
-<div data-role="fieldcontain">
-	<label for="apikey">Client-ID (API-Key)</label>
-	<input name="apikey" id="apikey" type="text" />
-	<p class="hint">Die Client-ID aus dem <a href="https://developer.viessmann.com/" target="_blank">Viessmann Developer Portal</a>. (Redirect URI muss dort auf <span class="mono">http://localhost:4200/</span> oder Standard gesetzt sein).</p>
-</div>
+<div class="card-box">
+	<h3 class="card-header">MQTT Datenübertragung & Bidirektionale Steuerung</h3>
 
-<div class="wide">Abfrage & Steuerung</div>
+	<fieldset data-role="controlgroup">
+		<input type="checkbox" name="MQTT.enabled" id="MQTT.enabled" class="refreshdisplay" checked>
+		<label for="MQTT.enabled">MQTT aktivieren (Empfohlen)</label>
+		<p class="hint">Überträgt Werte bei Änderung (Change-Detection) an den MQTT Broker und erlaubt Steuerung via MQTT.</p>
+	</fieldset>
 
-<div data-role="fieldcontain">
-	<label for="Cron.interval">Abfrage-Intervall</label>
-	<select name="Cron.interval" id="Cron.interval">
-		<option value="60">60 Sekunden (~1.440 Calls / Tag)</option>
-		<option value="120" selected>120 Sekunden (~720 Calls / Tag - Empfohlen)</option>
-		<option value="180">3 Minuten (~480 Calls / Tag)</option>
-		<option value="300">5 Minuten (~288 Calls / Tag)</option>
-		<option value="600">10 Minuten (~144 Calls / Tag)</option>
-		<option value="900">15 Minuten (~96 Calls / Tag)</option>
-	</select>
-	<p class="hint">Bestimmt, wie oft neue Werte von Viessmann abgerufen werden. <b>Empfehlung:</b> Mindestens 60-120 Sek., um das API-Tageslimit nicht zu überschreiten.</p>
-</div>
+	<div data-role="fieldcontain" class="mqtthidden">
+		<label for="MQTT.topic">Basis-Topic</label>
+		<input name="MQTT.topic" id="MQTT.topic" type="text" value="vitoconnect">
+		<p class="hint">Standard: <span class="mono">vitoconnect</span>. Der Miniserver abonniert <span class="mono">vitoconnect/#</span>. Befehle können an <span class="mono">vitoconnect/set/...</span> gesendet werden.</p>
+	</div>
 
-<div class="wide">MQTT Datenübertragung & Bidirektionale Steuerung</div>
+	<fieldset data-role="controlgroup" class="mqtthidden">
+		<input type="checkbox" name="MQTT.use_gateway" id="MQTT.use_gateway" class="refreshdisplay" checked>
+		<label for="MQTT.use_gateway">LoxBerry MQTT Gateway Einstellungen automatisch nutzen</label>
+		<p class="hint">Wenn aktiv, werden Broker-Host, Port und Zugangsdaten direkt aus dem LoxBerry MQTT Gateway übernommen.</p>
+	</fieldset>
 
-<fieldset data-role="controlgroup">
-	<input type="checkbox" name="MQTT.enabled" id="MQTT.enabled" class="refreshdisplay" checked>
-	<label for="MQTT.enabled">MQTT aktivieren (Empfohlen)</label>
-	<p class="hint">Überträgt Werte bei Änderung (Change-Detection) an den MQTT Broker und erlaubt Steuerung via MQTT.</p>
-</fieldset>
+	<div data-role="fieldcontain" style="display:none" class="mqtthosthidden">
+		<label for="MQTT.host">Eigener Broker Host:Port</label>
+		<input name="MQTT.host" id="MQTT.host" type="text" placeholder="127.0.0.1:1883">
+		<p class="hint">Nur angeben, wenn ein externer Broker verwendet werden soll.</p>
+	</div>
 
-<div data-role="fieldcontain" class="mqtthidden">
-	<label for="MQTT.topic">Basis-Topic</label>
-	<input name="MQTT.topic" id="MQTT.topic" type="text" value="vitoconnect">
-	<p class="hint">Standard: <span class="mono">vitoconnect</span>. Der Miniserver abonniert <span class="mono">vitoconnect/#</span>. Befehle können an <span class="mono">vitoconnect/set/...</span> gesendet werden.</p>
-</div>
+	<div data-role="fieldcontain" style="display:none" class="mqtthosthidden">
+		<label for="MQTT.user">Broker Benutzer</label>
+		<input name="MQTT.user" id="MQTT.user" type="text">
+	</div>
 
-<fieldset data-role="controlgroup" class="mqtthidden">
-	<input type="checkbox" name="MQTT.use_gateway" id="MQTT.use_gateway" class="refreshdisplay" checked>
-	<label for="MQTT.use_gateway">LoxBerry MQTT Gateway Einstellungen automatisch nutzen</label>
-	<p class="hint">Wenn aktiv, werden Broker-Host, Port und Zugangsdaten direkt aus dem LoxBerry MQTT Gateway übernommen.</p>
-</fieldset>
-
-<div data-role="fieldcontain" style="display:none" class="mqtthosthidden">
-	<label for="MQTT.host">Eigener Broker Host:Port</label>
-	<input name="MQTT.host" id="MQTT.host" type="text" placeholder="127.0.0.1:1883">
-	<p class="hint">Nur angeben, wenn ein externer Broker verwendet werden soll.</p>
-</div>
-
-<div data-role="fieldcontain" style="display:none" class="mqtthosthidden">
-	<label for="MQTT.user">Broker Benutzer</label>
-	<input name="MQTT.user" id="MQTT.user" type="text">
-</div>
-
-<div data-role="fieldcontain" style="display:none" class="mqtthosthidden">
-	<label for="MQTT.pass">Broker Passwort</label>
-	<input name="MQTT.pass" id="MQTT.pass" type="password">
+	<div data-role="fieldcontain" style="display:none" class="mqtthosthidden">
+		<label for="MQTT.pass">Broker Passwort</label>
+		<input name="MQTT.pass" id="MQTT.pass" type="password">
+	</div>
 </div>
 
 </form>
 
-<hr>
-
-<div style="display:flex;align-items:center;justify-content:center;height:24px;min-height:24px">
+<div style="display:flex;align-items:center;justify-content:center;height:24px;min-height:24px;margin-top:10px;">
 	<span id="savemessages"></span>
 </div>
-<div style="display:flex;align-items:center;justify-content:center;">
+<div style="display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
 	<button class="ui-btn ui-btn-icon-right ui-btn-b" id="saveapply" data-inline="true">Einstellungen speichern & anwenden</button>
 </div>
 
@@ -271,7 +335,6 @@ function checkPyViCareStatus() {
 			$("#service-msg").html("");
 		} else {
 			$("#daemon-status-badge").html('<span class="badge-err">Gestoppt</span>');
-			// Query reason why stopped
 			$.getJSON("ajax-handler.php?action=get_daemon_diagnostics")
 			.done(function(diag) {
 				if (!diag.is_running && diag.reason_text) {
