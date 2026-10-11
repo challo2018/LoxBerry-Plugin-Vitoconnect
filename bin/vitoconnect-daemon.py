@@ -431,14 +431,37 @@ class VitoconnectDaemon:
             logger.warning("No active device to handle command.")
             return
 
-        # Pick the device that has circuits or heating controls (fallback to first device)
-        device = self.devices[0]
-        for d in self.devices:
-            if getattr(d, "circuits", None) or hasattr(d, "setDomesticHotWaterTargetTemperature"):
-                device = d
-                break
+        parts = [p for p in subtopic.strip("/").split("/") if p]
+        if not parts:
+            return
+
+        # Check if a specific device is targeted: e.g. device_0/... or device/0/...
+        target_device = None
+        if parts[0].startswith("device_"):
+            try:
+                dev_idx = int(parts[0].split("_")[1])
+                if dev_idx < len(self.devices):
+                    target_device = self.devices[dev_idx]
+                parts = parts[1:]
+            except (ValueError, IndexError):
+                pass
+        elif parts[0] == "device" and len(parts) > 1 and parts[1].isdigit():
+            dev_idx = int(parts[1])
+            if dev_idx < len(self.devices):
+                target_device = self.devices[dev_idx]
+            parts = parts[2:]
+
+        # If no specific device is targeted, find the first heating/active device
+        if not target_device:
+            target_device = self.devices[0]
+            for d in self.devices:
+                if getattr(d, "circuits", None) or hasattr(d, "setDomesticHotWaterTargetTemperature"):
+                    target_device = d
+                    break
+
+        device = target_device
         try:
-            parts = subtopic.split("/")
+            sub = "/".join(parts)
             
             # e.g. circuit_0/normal_temperature or circuit/0/normal_temperature
             if "circuit" in parts[0] or (len(parts) > 1 and parts[0] == "circuit"):
@@ -476,8 +499,8 @@ class VitoconnectDaemon:
                     return
 
             # DHW Commands
-            if "dhw" in subtopic:
-                if "target_temperature" in subtopic or "temperature" in subtopic:
+            if "dhw" in sub:
+                if "target_temperature" in sub or "temperature" in sub:
                     temp = float(value)
                     logger.info(f"Setting DHW target temperature to {temp}°C")
                     device.setDomesticHotWaterTargetTemperature(temp)
@@ -608,6 +631,10 @@ class VitoconnectDaemon:
                 if comp_hours is not None:
                     record(f"{dev_prefix}/compressor/hours", comp_hours, "h", "Kompressor-Betriebsstunden")
 
+                set_prefix = f"{self.base_topic}/set"
+                if len(self.devices) > 1:
+                    set_prefix += f"/device_{dev_idx}"
+
                 # Domestic Hot Water (DHW)
                 dhw_temp = self.safe_get(device.getDomesticHotWaterStorageTemperature)
                 if dhw_temp is not None:
@@ -615,7 +642,7 @@ class VitoconnectDaemon:
 
                 dhw_target = self.safe_get(device.getDomesticHotWaterTargetTemperature)
                 if dhw_target is not None:
-                    record(f"{dev_prefix}/dhw/target_temperature", round(dhw_target, 2), "°C", "Warmwasser-Sollwert", writable=True, set_topic=f"{self.base_topic}/set/dhw/target_temperature")
+                    record(f"{dev_prefix}/dhw/target_temperature", round(dhw_target, 2), "°C", "Warmwasser-Sollwert", writable=True, set_topic=f"{set_prefix}/dhw/target_temperature")
 
                 dhw_pump = self.safe_get(device.getDomesticHotWaterCirculationPump)
                 if dhw_pump is not None:
@@ -623,7 +650,7 @@ class VitoconnectDaemon:
 
                 dhw_charge = self.safe_get(device.getDomesticHotWaterOneTimeCharge)
                 if dhw_charge is not None:
-                    record(f"{dev_prefix}/dhw/one_time_charge", "1" if dhw_charge else "0", "", "Einmalige Warmwasserbereitung", writable=True, set_topic=f"{self.base_topic}/set/dhw/one_time_charge")
+                    record(f"{dev_prefix}/dhw/one_time_charge", "1" if dhw_charge else "0", "", "Einmalige Warmwasserbereitung", writable=True, set_topic=f"{set_prefix}/dhw/one_time_charge")
 
                 # Errors
                 active_errors = self.safe_get(device.getActiveErrors, [])
@@ -636,10 +663,11 @@ class VitoconnectDaemon:
                 circuits = getattr(device, "circuits", [])
                 for c_idx, circuit in enumerate(circuits):
                     c_prefix = f"{dev_prefix}/circuit_{c_idx}"
+                    c_set_prefix = f"{set_prefix}/circuit_{c_idx}"
 
                     mode = self.safe_get(circuit.getActiveMode)
                     if mode is not None:
-                        record(f"{c_prefix}/mode", mode, "", f"Heizkreis {c_idx}: Betriebsmodus", writable=True, set_topic=f"{self.base_topic}/set/circuit_{c_idx}/mode")
+                        record(f"{c_prefix}/mode", mode, "", f"Heizkreis {c_idx}: Betriebsmodus", writable=True, set_topic=f"{c_set_prefix}/mode")
 
                     program = self.safe_get(circuit.getActiveProgram)
                     if program is not None:
@@ -647,15 +675,15 @@ class VitoconnectDaemon:
 
                     normal_t = self.safe_get(circuit.getNormalTargetTemperature)
                     if normal_t is not None:
-                        record(f"{c_prefix}/normal_temperature", normal_t, "°C", f"Heizkreis {c_idx}: Normal-Sollwert", writable=True, set_topic=f"{self.base_topic}/set/circuit_{c_idx}/normal_temperature")
+                        record(f"{c_prefix}/normal_temperature", normal_t, "°C", f"Heizkreis {c_idx}: Normal-Sollwert", writable=True, set_topic=f"{c_set_prefix}/normal_temperature")
 
                     comfort_t = self.safe_get(circuit.getComfortTargetTemperature)
                     if comfort_t is not None:
-                        record(f"{c_prefix}/comfort_temperature", comfort_t, "°C", f"Heizkreis {c_idx}: Komfort-Sollwert", writable=True, set_topic=f"{self.base_topic}/set/circuit_{c_idx}/comfort_temperature")
+                        record(f"{c_prefix}/comfort_temperature", comfort_t, "°C", f"Heizkreis {c_idx}: Komfort-Sollwert", writable=True, set_topic=f"{c_set_prefix}/comfort_temperature")
 
                     reduced_t = self.safe_get(circuit.getReducedTargetTemperature)
                     if reduced_t is not None:
-                        record(f"{c_prefix}/reduced_temperature", reduced_t, "°C", f"Heizkreis {c_idx}: Absenk-Sollwert", writable=True, set_topic=f"{self.base_topic}/set/circuit_{c_idx}/reduced_temperature")
+                        record(f"{c_prefix}/reduced_temperature", reduced_t, "°C", f"Heizkreis {c_idx}: Absenk-Sollwert", writable=True, set_topic=f"{c_set_prefix}/reduced_temperature")
 
                     slope = self.safe_get(circuit.getHeatingCurveSlope)
                     if slope is not None:
