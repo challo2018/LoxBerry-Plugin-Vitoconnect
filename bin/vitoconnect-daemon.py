@@ -33,16 +33,109 @@ except ImportError:
     PyViCare = None
 
 # Configure logging
+logger = logging.getLogger("vitoconnect-daemon")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-logger = logging.getLogger("vitoconnect-daemon")
 
 # LoxBerry environment
 LBHOMEDIR = os.environ.get("LBHOMEDIR", "/opt/loxberry")
 PLUGIN_NAME = "Vitoconnect"
+
+def map_loglevel(level_val) -> int:
+    """Map LoxBerry numeric loglevel (0-7) or string name to Python logging level."""
+    if level_val is None:
+        return logging.INFO
+
+    # If string like "DEBUG", "INFO", "WARNING", "ERROR"
+    if isinstance(level_val, str):
+        val_str = level_val.strip().upper()
+        if val_str in ("7", "DEBUG", "DEB"):
+            return logging.DEBUG
+        if val_str in ("6", "INFO", "INF"):
+            return logging.INFO
+        if val_str in ("5", "NOTICE", "NOTE"):
+            return logging.INFO
+        if val_str in ("4", "WARNING", "WARN"):
+            return logging.WARNING
+        if val_str in ("3", "ERROR", "ERR"):
+            return logging.ERROR
+        if val_str in ("2", "CRITICAL", "CRIT"):
+            return logging.CRITICAL
+        try:
+            level_int = int(val_str)
+            return map_loglevel(level_int)
+        except ValueError:
+            pass
+
+    if isinstance(level_val, (int, float)):
+        lvl = int(level_val)
+        if lvl >= 7:
+            return logging.DEBUG
+        if lvl >= 5:  # 5=Notice, 6=Info
+            return logging.INFO
+        if lvl == 4:  # 4=Warning
+            return logging.WARNING
+        if lvl <= 3:  # 3=Error, 2=Crit, 1=Alert, 0=Emerg
+            return logging.ERROR
+
+    return logging.INFO
+
+def get_configured_loglevel(config_data: dict = None) -> int:
+    """Detect loglevel from LoxBerry environment, plugindatabase.json, or plugin config."""
+    # 1. Environment variable (e.g. LBPLOGLEVEL passed by LoxBerry daemon runner)
+    env_lvl = os.environ.get("LBPLOGLEVEL") or os.environ.get("LOGLEVEL")
+    if env_lvl is not None and str(env_lvl).strip():
+        return map_loglevel(env_lvl)
+
+    # 2. Check plugin config.json
+    if config_data:
+        cfg_lvl = (
+            config_data.get("loglevel")
+            or config_data.get("LogLevel")
+            or config_data.get("log_level")
+            or config_data.get("logging", {}).get("level")
+        )
+        if cfg_lvl is not None:
+            return map_loglevel(cfg_lvl)
+
+    # 3. Read LoxBerry system plugindatabase.json
+    plugindb_paths = [
+        Path(LBHOMEDIR) / "data" / "system" / "plugindatabase.json",
+        Path("/opt/loxberry/data/system/plugindatabase.json"),
+    ]
+    for p in plugindb_paths:
+        if p.exists():
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    pdb = json.load(f)
+                plugins = pdb.get("plugins", {})
+                for _, pinfo in plugins.items():
+                    if (
+                        pinfo.get("name") == PLUGIN_NAME
+                        or pinfo.get("folder") == PLUGIN_NAME
+                        or pinfo.get("name") == PLUGIN_NAME.lower()
+                        or pinfo.get("folder") == PLUGIN_NAME.lower()
+                    ):
+                        lvl = pinfo.get("loglevel")
+                        if lvl is not None:
+                            return map_loglevel(lvl)
+            except Exception:
+                pass
+
+    return logging.INFO
+
+def apply_loglevel(level: int):
+    """Set log level for root logger, daemon logger and dependencies."""
+    logger.setLevel(level)
+    for handler in logging.root.handlers:
+        handler.setLevel(level)
+    logging.root.setLevel(level)
+    if level == logging.DEBUG:
+        logging.getLogger("paho").setLevel(logging.INFO)  # keep MQTT socket ping quiet unless needed
+
 
 def resolve_plugin_path(env_var, subdir):
     val = os.environ.get(env_var)
@@ -121,6 +214,8 @@ class VitoconnectDaemon:
         self.base_topic = "vitoconnect"
         self.poll_interval = 60
         self.heartbeat_interval = 1800  # 30 min
+        self.current_loglevel = None
+
 
     def load_config(self):
         if not self.config_path.exists():
@@ -129,11 +224,27 @@ class VitoconnectDaemon:
         try:
             with open(self.config_path, "r", encoding="utf-8") as f:
                 self.config = json.load(f)
+            self.update_loglevel()
             logger.info("Configuration loaded successfully")
             return True
         except Exception as e:
             logger.error(f"Error reading config: {e}")
             return False
+
+    def update_loglevel(self):
+        """Read and apply configured log level from LoxBerry / config."""
+        lvl = get_configured_loglevel(self.config)
+        if lvl != self.current_loglevel:
+            old_name = logging.getLevelName(self.current_loglevel) if self.current_loglevel else "INIT"
+            self.current_loglevel = lvl
+            apply_loglevel(lvl)
+            lvl_name = logging.getLevelName(lvl)
+            if old_name != "INIT":
+                logger.info(f"LoxBerry log level changed from {old_name} to {lvl_name} ({lvl})")
+            else:
+                logger.info(f"LoxBerry log level initialized to {lvl_name} ({lvl})")
+
+
 
     def get_mqtt_settings(self):
         """Determine MQTT broker settings (LoxBerry MQTT Gateway or custom)."""
@@ -1018,9 +1129,10 @@ class VitoconnectDaemon:
         while self.running:
             now = time.time()
 
-            # Check if config file was modified in Web-UI
+            # Check if config file or LoxBerry loglevel changed
             if now - last_config_check >= 5:
                 last_config_check = now
+                self.update_loglevel()
                 if self.config_path.exists():
                     try:
                         curr_mtime = self.config_path.stat().st_mtime
@@ -1035,6 +1147,7 @@ class VitoconnectDaemon:
                             self.init_vicare()
                     except Exception as e:
                         logger.warning(f"Error checking config file modification: {e}")
+
 
             # If credentials are not yet available, wait
             has_creds = bool(self.config and self.config.get("user") and self.config.get("apikey"))
