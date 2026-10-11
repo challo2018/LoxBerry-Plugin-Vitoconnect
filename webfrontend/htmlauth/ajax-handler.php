@@ -112,6 +112,49 @@ if ($action == "get_stats") {
     sendresponse(200, "application/json", json_encode(["is_running" => false, "calls_24h" => 0, "remaining_24h" => 1450]));
 }
 
+// 6. Live Datapoints
+if ($action == "get_live_values") {
+    $values_file = "/run/shm/" . $plugin_dir . "_values.json";
+    if (!file_exists($values_file)) {
+        $values_file = "/tmp/" . $plugin_dir . "_values.json";
+    }
+    if (file_exists($values_file)) {
+        sendresponse(200, "application/json", file_get_contents($values_file));
+    }
+    sendresponse(200, "application/json", json_encode([]));
+}
+
+// 7. Send Command to MQTT (for Testing from GUI)
+if ($action == "send_command") {
+    require_once "loxberry_io.php";
+    $target_topic = isset($_POST["topic"]) ? trim($_POST["topic"]) : (isset($_GET["topic"]) ? trim($_GET["topic"]) : "");
+    $value = isset($_POST["value"]) ? trim($_POST["value"]) : (isset($_GET["value"]) ? trim($_GET["value"]) : "");
+
+    if (empty($target_topic)) {
+        sendresponse(400, "application/json", json_encode(["error" => "Topic is missing"]));
+    }
+
+    if (function_exists("mqtt_publish")) {
+        $pub_res = mqtt_publish($target_topic, $value);
+        sendresponse(200, "application/json", json_encode([
+            "success" => true,
+            "topic" => $target_topic,
+            "value" => $value,
+            "message" => "Befehl erfolgreich an MQTT übergeben"
+        ]));
+    } else {
+        // Fallback: mosquitto_pub CLI
+        $cmd = "mosquitto_pub -t " . escapeshellarg($target_topic) . " -m " . escapeshellarg($value) . " 2>&1";
+        shell_exec($cmd);
+        sendresponse(200, "application/json", json_encode([
+            "success" => true,
+            "topic" => $target_topic,
+            "value" => $value,
+            "message" => "Befehl über mosquitto_pub übergeben"
+        ]));
+    }
+}
+
 sendresponse(501, "application/json", json_encode(["error" => "No supported action given."]));
 exit(1);
 

@@ -365,6 +365,22 @@ class VitoconnectDaemon:
             logger.debug("Polling data from Viessmann API...")
             self.quota.record_call()
 
+            live_datapoints = {}
+            ts_now = datetime.now().isoformat()
+
+            def record(topic, val, unit="", desc="", writable=False, set_topic=None):
+                if val is not None:
+                    live_datapoints[topic] = {
+                        "topic": topic,
+                        "value": val,
+                        "unit": unit,
+                        "description": desc,
+                        "writable": writable,
+                        "set_topic": set_topic,
+                        "timestamp": ts_now,
+                    }
+                    self.publish(topic, val, force=is_heartbeat)
+
             for dev_idx, device in enumerate(self.devices):
                 dev_prefix = f"{self.base_topic}"
                 if len(self.devices) > 1:
@@ -375,73 +391,73 @@ class VitoconnectDaemon:
                 is_online = self.safe_get(device.isOnline, True)
                 serial = self.safe_get(device.getSerial, "")
 
-                self.publish(f"{dev_prefix}/model", model, force=is_heartbeat)
-                self.publish(f"{dev_prefix}/online", "1" if is_online else "0", force=is_heartbeat)
+                record(f"{dev_prefix}/model", model, desc="Gerätemodell")
+                record(f"{dev_prefix}/online", "1" if is_online else "0", desc="Online Status")
                 if serial:
-                    self.publish(f"{dev_prefix}/serial", serial, force=is_heartbeat)
+                    record(f"{dev_prefix}/serial", serial, desc="Seriennummer")
 
                 # Core Temperatures
                 out_temp = self.safe_get(device.getOutsideTemperature)
                 if out_temp is not None:
-                    self.publish(f"{dev_prefix}/temperature/outside", round(out_temp, 2), force=is_heartbeat)
+                    record(f"{dev_prefix}/temperature/outside", round(out_temp, 2), "°C", "Außentemperatur")
 
                 boiler_temp = self.safe_get(device.getBoilerTemperature)
                 if boiler_temp is not None:
-                    self.publish(f"{dev_prefix}/temperature/boiler", round(boiler_temp, 2), force=is_heartbeat)
+                    record(f"{dev_prefix}/temperature/boiler", round(boiler_temp, 2), "°C", "Kesseltemperatur")
 
                 supply_temp = self.safe_get(device.getSupplyTemperature)
                 if supply_temp is not None:
-                    self.publish(f"{dev_prefix}/temperature/supply", round(supply_temp, 2), force=is_heartbeat)
+                    record(f"{dev_prefix}/temperature/supply", round(supply_temp, 2), "°C", "Vorlauftemperatur")
 
                 # Burner / Compressor
                 burner_active = self.safe_get(device.getBurnerActive)
                 if burner_active is not None:
-                    self.publish(f"{dev_prefix}/burner/active", "1" if burner_active else "0", force=is_heartbeat)
+                    record(f"{dev_prefix}/burner/active", "1" if burner_active else "0", "", "Brenner aktiv")
 
                 burner_hours = self.safe_get(device.getBurnerHours)
                 if burner_hours is not None:
-                    self.publish(f"{dev_prefix}/burner/hours", burner_hours, force=is_heartbeat)
+                    record(f"{dev_prefix}/burner/hours", burner_hours, "h", "Brenner-Betriebsstunden")
 
                 burner_starts = self.safe_get(device.getBurnerStarts)
                 if burner_starts is not None:
-                    self.publish(f"{dev_prefix}/burner/starts", burner_starts, force=is_heartbeat)
+                    record(f"{dev_prefix}/burner/starts", burner_starts, "", "Brenner-Starts")
 
                 burner_mod = self.safe_get(device.getBurnerModulation)
                 if burner_mod is not None:
-                    self.publish(f"{dev_prefix}/burner/modulation", burner_mod, force=is_heartbeat)
+                    record(f"{dev_prefix}/burner/modulation", burner_mod, "%", "Brennermodulation")
 
                 # Heat pump specific
                 comp_active = self.safe_get(device.getCompressorActive)
                 if comp_active is not None:
-                    self.publish(f"{dev_prefix}/compressor/active", "1" if comp_active else "0", force=is_heartbeat)
+                    record(f"{dev_prefix}/compressor/active", "1" if comp_active else "0", "", "Kompressor aktiv")
 
                 comp_hours = self.safe_get(device.getCompressorHours)
                 if comp_hours is not None:
-                    self.publish(f"{dev_prefix}/compressor/hours", comp_hours, force=is_heartbeat)
+                    record(f"{dev_prefix}/compressor/hours", comp_hours, "h", "Kompressor-Betriebsstunden")
 
                 # Domestic Hot Water (DHW)
                 dhw_temp = self.safe_get(device.getDomesticHotWaterStorageTemperature)
                 if dhw_temp is not None:
-                    self.publish(f"{dev_prefix}/dhw/temperature", round(dhw_temp, 2), force=is_heartbeat)
+                    record(f"{dev_prefix}/dhw/temperature", round(dhw_temp, 2), "°C", "Warmwassertemperatur (Speicher)")
 
                 dhw_target = self.safe_get(device.getDomesticHotWaterTargetTemperature)
                 if dhw_target is not None:
-                    self.publish(f"{dev_prefix}/dhw/target_temperature", round(dhw_target, 2), force=is_heartbeat)
+                    record(f"{dev_prefix}/dhw/target_temperature", round(dhw_target, 2), "°C", "Warmwasser-Sollwert", writable=True, set_topic=f"{self.base_topic}/set/dhw/target_temperature")
 
                 dhw_pump = self.safe_get(device.getDomesticHotWaterCirculationPump)
                 if dhw_pump is not None:
-                    self.publish(f"{dev_prefix}/dhw/circulation_pump", "1" if dhw_pump else "0", force=is_heartbeat)
+                    record(f"{dev_prefix}/dhw/circulation_pump", "1" if dhw_pump else "0", "", "Warmwasser-Zirkulationspumpe")
 
                 dhw_charge = self.safe_get(device.getDomesticHotWaterOneTimeCharge)
                 if dhw_charge is not None:
-                    self.publish(f"{dev_prefix}/dhw/one_time_charge", "1" if dhw_charge else "0", force=is_heartbeat)
+                    record(f"{dev_prefix}/dhw/one_time_charge", "1" if dhw_charge else "0", "", "Einmalige Warmwasserbereitung", writable=True, set_topic=f"{self.base_topic}/set/dhw/one_time_charge")
 
                 # Errors
                 active_errors = self.safe_get(device.getActiveErrors, [])
                 error_count = len(active_errors) if active_errors else 0
-                self.publish(f"{dev_prefix}/errors/count", error_count, force=is_heartbeat)
+                record(f"{dev_prefix}/errors/count", error_count, "", "Anzahl aktiver Fehler")
                 if error_count > 0:
-                    self.publish(f"{dev_prefix}/errors/active", json.dumps(active_errors), force=is_heartbeat)
+                    record(f"{dev_prefix}/errors/active", json.dumps(active_errors), "", "Aktive Fehlermeldungen")
 
                 # Heating Circuits
                 circuits = getattr(device, "circuits", [])
@@ -450,42 +466,52 @@ class VitoconnectDaemon:
 
                     mode = self.safe_get(circuit.getActiveMode)
                     if mode is not None:
-                        self.publish(f"{c_prefix}/mode", mode, force=is_heartbeat)
+                        record(f"{c_prefix}/mode", mode, "", f"Heizkreis {c_idx}: Betriebsmodus", writable=True, set_topic=f"{self.base_topic}/set/circuit_{c_idx}/mode")
 
                     program = self.safe_get(circuit.getActiveProgram)
                     if program is not None:
-                        self.publish(f"{c_prefix}/program", program, force=is_heartbeat)
+                        record(f"{c_prefix}/program", program, "", f"Heizkreis {c_idx}: Aktives Programm")
 
                     normal_t = self.safe_get(circuit.getNormalTargetTemperature)
                     if normal_t is not None:
-                        self.publish(f"{c_prefix}/normal_temperature", normal_t, force=is_heartbeat)
+                        record(f"{c_prefix}/normal_temperature", normal_t, "°C", f"Heizkreis {c_idx}: Normal-Sollwert", writable=True, set_topic=f"{self.base_topic}/set/circuit_{c_idx}/normal_temperature")
 
                     comfort_t = self.safe_get(circuit.getComfortTargetTemperature)
                     if comfort_t is not None:
-                        self.publish(f"{c_prefix}/comfort_temperature", comfort_t, force=is_heartbeat)
+                        record(f"{c_prefix}/comfort_temperature", comfort_t, "°C", f"Heizkreis {c_idx}: Komfort-Sollwert", writable=True, set_topic=f"{self.base_topic}/set/circuit_{c_idx}/comfort_temperature")
 
                     reduced_t = self.safe_get(circuit.getReducedTargetTemperature)
                     if reduced_t is not None:
-                        self.publish(f"{c_prefix}/reduced_temperature", reduced_t, force=is_heartbeat)
+                        record(f"{c_prefix}/reduced_temperature", reduced_t, "°C", f"Heizkreis {c_idx}: Absenk-Sollwert", writable=True, set_topic=f"{self.base_topic}/set/circuit_{c_idx}/reduced_temperature")
 
                     slope = self.safe_get(circuit.getHeatingCurveSlope)
                     if slope is not None:
-                        self.publish(f"{c_prefix}/heating_curve_slope", slope, force=is_heartbeat)
+                        record(f"{c_prefix}/heating_curve_slope", slope, "", f"Heizkreis {c_idx}: Heizkennlinie Neigung")
 
                     shift = self.safe_get(circuit.getHeatingCurveShift)
                     if shift is not None:
-                        self.publish(f"{c_prefix}/heating_curve_shift", shift, force=is_heartbeat)
+                        record(f"{c_prefix}/heating_curve_shift", shift, "K", f"Heizkreis {c_idx}: Heizkennlinie Niveau")
 
                     c_supply = self.safe_get(circuit.getSupplyTemperature)
                     if c_supply is not None:
-                        self.publish(f"{c_prefix}/supply_temperature", round(c_supply, 2), force=is_heartbeat)
+                        record(f"{c_prefix}/supply_temperature", round(c_supply, 2), "°C", f"Heizkreis {c_idx}: Vorlauftemperatur")
 
             # Quota info
             calls_24h = self.quota.count_24h()
             rem_24h = self.quota.remaining_24h()
-            self.publish(f"{self.base_topic}/quota/calls_24h", calls_24h, force=is_heartbeat)
-            self.publish(f"{self.base_topic}/quota/remaining", rem_24h, force=is_heartbeat)
-            self.publish(f"{self.base_topic}/last_poll", datetime.now().isoformat(), force=is_heartbeat)
+            record(f"{self.base_topic}/quota/calls_24h", calls_24h, "", "API-Aufrufe (24h)")
+            record(f"{self.base_topic}/quota/remaining", rem_24h, "", "Verbleibende API-Aufrufe")
+            record(f"{self.base_topic}/last_poll", ts_now, "", "Letzter Abfrage-Zeitstempel")
+
+            # Save live values file to RAM for Web-UI
+            try:
+                values_file = Path("/run/shm") / f"{PLUGIN_NAME}_values.json"
+                if not values_file.parent.exists():
+                    values_file = Path("/tmp") / f"{PLUGIN_NAME}_values.json"
+                with open(values_file, "w", encoding="utf-8") as vf:
+                    json.dump(live_datapoints, vf, indent=2)
+            except Exception as e:
+                logger.debug(f"Could not write live values file: {e}")
 
             # Write stats to RAM file for Web-UI
             self.update_stats_file()
