@@ -299,9 +299,15 @@ class VitoconnectDaemon:
             for d in raw_devices:
                 dev_model = getattr(d, "device_model", getattr(d, "getModel", lambda: "Unknown")())
                 dev_type = getattr(d, "device_type", getattr(d, "getDeviceType", lambda: "")())
+                is_online = getattr(d, "status", "") == "Online" if hasattr(d, "status") else True
                 if hasattr(d, "asAutoDetectDevice"):
                     try:
                         typed_dev = d.asAutoDetectDevice()
+                        # Attach metadata for easy access in poll loop
+                        setattr(typed_dev, "_device_model", dev_model)
+                        setattr(typed_dev, "_device_type", dev_type)
+                        setattr(typed_dev, "_is_online", is_online)
+                        setattr(typed_dev, "_raw_config", d)
                         self.devices.append(typed_dev)
                         logger.info(f"Initialized device: {dev_model} ({dev_type}) -> {type(typed_dev).__name__}")
                     except Exception as ex:
@@ -536,14 +542,23 @@ class VitoconnectDaemon:
         except Exception as e:
             logger.error(f"Error publishing to {topic}: {e}")
 
-    def safe_get(self, func, default=None):
+    def safe_get(self, target, method_name=None, default=None):
+        """Safely execute a method on an object or call a function, catching unsupported features and missing attributes."""
         try:
+            if method_name is not None:
+                func = getattr(target, method_name, None)
+                if func is None or not callable(func):
+                    return default
+            else:
+                func = target
+                if func is None or not callable(func):
+                    return default
             val = func()
             return val if val is not None else default
         except (PyViCareNotSupportedFeatureError, AttributeError):
             return default
         except Exception as e:
-            logger.debug(f"Feature lookup exception: {e}")
+            logger.debug(f"Feature lookup exception ({method_name or target}): {e}")
             return default
 
     def poll_and_publish(self):
@@ -583,9 +598,15 @@ class VitoconnectDaemon:
                     dev_prefix += f"/device_{dev_idx}"
 
                 # Device General Info
-                model = self.safe_get(device.getModelId, "Unknown")
-                is_online = self.safe_get(device.isOnline, True)
-                serial = self.safe_get(device.getSerial, "")
+                model = getattr(device, "_device_model", None)
+                if not model:
+                    model = self.safe_get(device, "getModel", getattr(device, "device_model", "Unknown"))
+                
+                is_online = getattr(device, "_is_online", None)
+                if is_online is None:
+                    is_online = self.safe_get(device, "isOnline", True)
+                
+                serial = self.safe_get(device, "getSerial", "")
 
                 record(f"{dev_prefix}/model", model, desc="Gerätemodell")
                 record(f"{dev_prefix}/online", "1" if is_online else "0", desc="Online Status")
@@ -593,41 +614,41 @@ class VitoconnectDaemon:
                     record(f"{dev_prefix}/serial", serial, desc="Seriennummer")
 
                 # Core Temperatures
-                out_temp = self.safe_get(device.getOutsideTemperature)
+                out_temp = self.safe_get(device, "getOutsideTemperature")
                 if out_temp is not None:
                     record(f"{dev_prefix}/temperature/outside", round(out_temp, 2), "°C", "Außentemperatur")
 
-                boiler_temp = self.safe_get(device.getBoilerTemperature)
+                boiler_temp = self.safe_get(device, "getBoilerTemperature")
                 if boiler_temp is not None:
                     record(f"{dev_prefix}/temperature/boiler", round(boiler_temp, 2), "°C", "Kesseltemperatur")
 
-                supply_temp = self.safe_get(device.getSupplyTemperature)
+                supply_temp = self.safe_get(device, "getSupplyTemperature")
                 if supply_temp is not None:
                     record(f"{dev_prefix}/temperature/supply", round(supply_temp, 2), "°C", "Vorlauftemperatur")
 
                 # Burner / Compressor
-                burner_active = self.safe_get(device.getBurnerActive)
+                burner_active = self.safe_get(device, "getBurnerActive")
                 if burner_active is not None:
                     record(f"{dev_prefix}/burner/active", "1" if burner_active else "0", "", "Brenner aktiv")
 
-                burner_hours = self.safe_get(device.getBurnerHours)
+                burner_hours = self.safe_get(device, "getBurnerHours")
                 if burner_hours is not None:
                     record(f"{dev_prefix}/burner/hours", burner_hours, "h", "Brenner-Betriebsstunden")
 
-                burner_starts = self.safe_get(device.getBurnerStarts)
+                burner_starts = self.safe_get(device, "getBurnerStarts")
                 if burner_starts is not None:
                     record(f"{dev_prefix}/burner/starts", burner_starts, "", "Brenner-Starts")
 
-                burner_mod = self.safe_get(device.getBurnerModulation)
+                burner_mod = self.safe_get(device, "getBurnerModulation")
                 if burner_mod is not None:
                     record(f"{dev_prefix}/burner/modulation", burner_mod, "%", "Brennermodulation")
 
                 # Heat pump specific
-                comp_active = self.safe_get(device.getCompressorActive)
+                comp_active = self.safe_get(device, "getCompressorActive")
                 if comp_active is not None:
                     record(f"{dev_prefix}/compressor/active", "1" if comp_active else "0", "", "Kompressor aktiv")
 
-                comp_hours = self.safe_get(device.getCompressorHours)
+                comp_hours = self.safe_get(device, "getCompressorHours")
                 if comp_hours is not None:
                     record(f"{dev_prefix}/compressor/hours", comp_hours, "h", "Kompressor-Betriebsstunden")
 
@@ -636,24 +657,24 @@ class VitoconnectDaemon:
                     set_prefix += f"/device_{dev_idx}"
 
                 # Domestic Hot Water (DHW)
-                dhw_temp = self.safe_get(device.getDomesticHotWaterStorageTemperature)
+                dhw_temp = self.safe_get(device, "getDomesticHotWaterStorageTemperature")
                 if dhw_temp is not None:
                     record(f"{dev_prefix}/dhw/temperature", round(dhw_temp, 2), "°C", "Warmwassertemperatur (Speicher)")
 
-                dhw_target = self.safe_get(device.getDomesticHotWaterTargetTemperature)
+                dhw_target = self.safe_get(device, "getDomesticHotWaterTargetTemperature")
                 if dhw_target is not None:
                     record(f"{dev_prefix}/dhw/target_temperature", round(dhw_target, 2), "°C", "Warmwasser-Sollwert", writable=True, set_topic=f"{set_prefix}/dhw/target_temperature")
 
-                dhw_pump = self.safe_get(device.getDomesticHotWaterCirculationPump)
+                dhw_pump = self.safe_get(device, "getDomesticHotWaterCirculationPump")
                 if dhw_pump is not None:
                     record(f"{dev_prefix}/dhw/circulation_pump", "1" if dhw_pump else "0", "", "Warmwasser-Zirkulationspumpe")
 
-                dhw_charge = self.safe_get(device.getDomesticHotWaterOneTimeCharge)
+                dhw_charge = self.safe_get(device, "getDomesticHotWaterOneTimeCharge")
                 if dhw_charge is not None:
                     record(f"{dev_prefix}/dhw/one_time_charge", "1" if dhw_charge else "0", "", "Einmalige Warmwasserbereitung", writable=True, set_topic=f"{set_prefix}/dhw/one_time_charge")
 
                 # Errors
-                active_errors = self.safe_get(device.getActiveErrors, [])
+                active_errors = self.safe_get(device, "getActiveErrors", [])
                 error_count = len(active_errors) if active_errors else 0
                 record(f"{dev_prefix}/errors/count", error_count, "", "Anzahl aktiver Fehler")
                 if error_count > 0:
@@ -665,35 +686,35 @@ class VitoconnectDaemon:
                     c_prefix = f"{dev_prefix}/circuit_{c_idx}"
                     c_set_prefix = f"{set_prefix}/circuit_{c_idx}"
 
-                    mode = self.safe_get(circuit.getActiveMode)
+                    mode = self.safe_get(circuit, "getActiveMode")
                     if mode is not None:
                         record(f"{c_prefix}/mode", mode, "", f"Heizkreis {c_idx}: Betriebsmodus", writable=True, set_topic=f"{c_set_prefix}/mode")
 
-                    program = self.safe_get(circuit.getActiveProgram)
+                    program = self.safe_get(circuit, "getActiveProgram")
                     if program is not None:
                         record(f"{c_prefix}/program", program, "", f"Heizkreis {c_idx}: Aktives Programm")
 
-                    normal_t = self.safe_get(circuit.getNormalTargetTemperature)
+                    normal_t = self.safe_get(circuit, "getNormalTargetTemperature")
                     if normal_t is not None:
                         record(f"{c_prefix}/normal_temperature", normal_t, "°C", f"Heizkreis {c_idx}: Normal-Sollwert", writable=True, set_topic=f"{c_set_prefix}/normal_temperature")
 
-                    comfort_t = self.safe_get(circuit.getComfortTargetTemperature)
+                    comfort_t = self.safe_get(circuit, "getComfortTargetTemperature")
                     if comfort_t is not None:
                         record(f"{c_prefix}/comfort_temperature", comfort_t, "°C", f"Heizkreis {c_idx}: Komfort-Sollwert", writable=True, set_topic=f"{c_set_prefix}/comfort_temperature")
 
-                    reduced_t = self.safe_get(circuit.getReducedTargetTemperature)
+                    reduced_t = self.safe_get(circuit, "getReducedTargetTemperature")
                     if reduced_t is not None:
                         record(f"{c_prefix}/reduced_temperature", reduced_t, "°C", f"Heizkreis {c_idx}: Absenk-Sollwert", writable=True, set_topic=f"{c_set_prefix}/reduced_temperature")
 
-                    slope = self.safe_get(circuit.getHeatingCurveSlope)
+                    slope = self.safe_get(circuit, "getHeatingCurveSlope")
                     if slope is not None:
                         record(f"{c_prefix}/heating_curve_slope", slope, "", f"Heizkreis {c_idx}: Heizkennlinie Neigung")
 
-                    shift = self.safe_get(circuit.getHeatingCurveShift)
+                    shift = self.safe_get(circuit, "getHeatingCurveShift")
                     if shift is not None:
                         record(f"{c_prefix}/heating_curve_shift", shift, "K", f"Heizkreis {c_idx}: Heizkennlinie Niveau")
 
-                    c_supply = self.safe_get(circuit.getSupplyTemperature)
+                    c_supply = self.safe_get(circuit, "getSupplyTemperature")
                     if c_supply is not None:
                         record(f"{c_prefix}/supply_temperature", round(c_supply, 2), "°C", f"Heizkreis {c_idx}: Vorlauftemperatur")
 
