@@ -152,7 +152,32 @@ class VitoconnectDaemon:
         password = mqtt_cfg.get("pass") or ""
         port = 1883
 
-        # Auto-detect LoxBerry MQTT settings if host or credentials are empty
+        # 1. Try official LoxBerry Python SDK if available (LoxBerry 4+)
+        if not host or not user:
+            try:
+                # Add LoxBerry libs to sys.path if not present
+                lb_pylib = Path(LBHOMEDIR) / "libs" / "pythonlib"
+                if lb_pylib.exists() and str(lb_pylib) not in sys.path:
+                    sys.path.insert(0, str(lb_pylib))
+                from loxberry import io as lb_io
+                cred = lb_io.mqtt_connectiondetails()
+                if cred:
+                    if not host and cred.get("brokerhost"):
+                        host = str(cred.get("brokerhost")).strip()
+                    if cred.get("brokerport"):
+                        try:
+                            port = int(cred.get("brokerport"))
+                        except ValueError:
+                            pass
+                    if not user and cred.get("brokeruser"):
+                        user = str(cred.get("brokeruser")).strip()
+                    if not password and cred.get("brokerpass"):
+                        password = str(cred.get("brokerpass"))
+                    logger.info(f"Loaded MQTT settings via LoxBerry SDK (loxberry.io) for user '{user}'")
+            except Exception as e:
+                logger.debug(f"loxberry.io SDK not available or failed: {e}")
+
+        # 2. Auto-detect LoxBerry MQTT settings from configuration files if host or credentials are empty
         if not host or not user:
             candidates = [
                 # LoxBerry 3 / 4 Core: /opt/loxberry/config/system/general.json
