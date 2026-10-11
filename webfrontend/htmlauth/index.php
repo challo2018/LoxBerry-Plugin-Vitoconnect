@@ -171,7 +171,7 @@ LBWeb::lbheader($template_title, $helplink, $helptemplate);
 	<div data-role="fieldcontain">
 		<label for="apikey">Client-ID (API-Key)</label>
 		<input name="apikey" id="apikey" type="text" />
-		<p class="hint">Die Client-ID aus dem <a href="https://developer.viessmann.com/" target="_blank">Viessmann Developer Portal</a>. (Redirect URI muss dort auf <span class="mono">http://localhost:4200/</span> oder Standard gesetzt sein).</p>
+		<p class="hint">Die Client-ID aus dem <a href="https://developer.viessmann.com/" target="_blank">Viessmann Developer Portal</a>. <b>Wichtig:</b> Redirect URI dort exakt auf <span class="mono">vicare://oauth-callback/everest</span> setzen und <i>Google reCAPTCHA</i> auf <b>Disabled</b> stellen.</p>
 	</div>
 </div>
 

@@ -152,28 +152,71 @@ class VitoconnectDaemon:
         password = mqtt_cfg.get("pass") or ""
         port = 1883
 
-        # Auto-detect LoxBerry MQTT Gateway if host is empty
-        if not host:
-            shm_candidates = [
+        # Auto-detect LoxBerry MQTT settings if host or credentials are empty
+        if not host or not user:
+            candidates = [
+                # LoxBerry 3 / 4 Core: /opt/loxberry/config/system/general.json
+                Path(LBHOMEDIR) / "config" / "system" / "general.json",
+                Path("/opt/loxberry/config/system/general.json"),
+                # LoxBerry system MQTT Gateway config
+                Path(LBHOMEDIR) / "config" / "system" / "mqttgateway.json",
+                Path("/opt/loxberry/config/system/mqttgateway.json"),
+                # Shared memory cache
                 Path("/dev/shm/mqttgateway.json"),
                 Path("/run/shm/mqttgateway.json"),
+                # Legacy plugin location
                 Path(LBHOMEDIR) / "config" / "plugins" / "mqttgateway" / "mqtt.json",
             ]
-            for cand in shm_candidates:
+            for cand in candidates:
                 if cand.exists():
                     try:
-                        with open(cand, "r") as f:
-                            gw = json.load(f)
-                        # Handle main / mqtt section differences
-                        main_sec = gw.get("Main", gw)
-                        host = str(main_sec.get("brokeraddress", "127.0.0.1")).strip()
-                        port = int(main_sec.get("brokerport", 1883))
-                        user = str(main_sec.get("brokeruser", "")).strip()
-                        password = str(main_sec.get("brokerpass", ""))
-                        logger.info(f"Using LoxBerry MQTT Gateway settings from {cand}")
-                        break
+                        with open(cand, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+
+                        # 1. Check LoxBerry system general.json structure: { "Mqtt": { "Brokerhost", "Brokeruser", ... } }
+                        mqtt_sec = data.get("Mqtt") or data.get("mqtt")
+                        if isinstance(mqtt_sec, dict):
+                            det_host = mqtt_sec.get("Brokerhost") or mqtt_sec.get("brokerhost") or mqtt_sec.get("Brokeraddress")
+                            det_port = mqtt_sec.get("Brokerport") or mqtt_sec.get("brokerport")
+                            det_user = mqtt_sec.get("Brokeruser") or mqtt_sec.get("brokeruser")
+                            det_pass = mqtt_sec.get("Brokerpass") or mqtt_sec.get("brokerpass")
+                            if det_host and not host:
+                                host = str(det_host).strip()
+                            if det_port:
+                                try:
+                                    port = int(det_port)
+                                except ValueError:
+                                    pass
+                            if det_user and not user:
+                                user = str(det_user).strip()
+                            if det_pass and not password:
+                                password = str(det_pass)
+                            if user:
+                                logger.info(f"Detected LoxBerry MQTT credentials from {cand} for user '{user}'")
+                                break
+
+                        # 2. Check mqttgateway.json structure: { "Main": { ... } } or root keys
+                        main_sec = data.get("Main", data)
+                        det_host = main_sec.get("brokeraddress") or main_sec.get("brokerhost")
+                        det_port = main_sec.get("brokerport")
+                        det_user = main_sec.get("brokeruser") or main_sec.get("user")
+                        det_pass = main_sec.get("brokerpass") or main_sec.get("pass")
+                        if det_host and not host:
+                            host = str(det_host).strip()
+                        if det_port:
+                            try:
+                                port = int(det_port)
+                            except ValueError:
+                                pass
+                        if det_user and not user:
+                            user = str(det_user).strip()
+                        if det_pass and not password:
+                            password = str(det_pass)
+                        if user:
+                            logger.info(f"Detected LoxBerry MQTT credentials from {cand} for user '{user}'")
+                            break
                     except Exception as e:
-                        logger.warning(f"Could not read MQTT Gateway config from {cand}: {e}")
+                        logger.warning(f"Could not read MQTT config from {cand}: {e}")
 
         # Fallback to localhost if still empty
         if not host:
@@ -230,9 +273,18 @@ class VitoconnectDaemon:
             if "InvalidCredentials" in err_type:
                 logger.error(
                     f"Viessmann API Authentication failed ({err_type})! "
-                    "Bitte E-Mail, Passwort und Client-ID prüfen. Sicherstellen, dass im Viessmann Developer Portal "
-                    "die Redirect URI auf 'http://localhost:4200/' gesetzt ist und reCAPTCHA deaktiviert ist."
+                    "Wichtig im Viessmann Developer Portal (developer.viessmann.com):\n"
+                    "1. 'Redirect URIs' muss exakt lauten: vicare://oauth-callback/everest\n"
+                    "2. 'Google reCAPTCHA' muss auf 'Disabled' stehen!\n"
+                    "3. Client-ID, E-Mail und Passwort auf Tippfehler prüfen."
                 )
+                # Remove stale token file if it exists so next attempt starts clean
+                if TOKEN_FILE.exists():
+                    try:
+                        TOKEN_FILE.unlink()
+                        logger.info(f"Removed stale token file: {TOKEN_FILE}")
+                    except Exception:
+                        pass
             else:
                 logger.error(f"Failed to connect to Viessmann API ({err_type}): {e}", exc_info=True)
             return False
@@ -299,9 +351,18 @@ class VitoconnectDaemon:
                 3: "Connection refused: server unavailable",
                 4: "Connection refused: bad username or password",
                 5: "Connection refused: not authorized (Bitte MQTT Gateway Benutzer/Passwort prüfen)",
+                128: "Unspecified error",
+                134: "Bad user name or password",
+                135: "Not authorized (MQTT Broker verweigert Zugriff ohne gültige Zugangsdaten)",
             }
             hint = err_hints.get(rc_code, f"Return Code {rc_code}")
             logger.error(f"MQTT connect failed: {hint} (rc={rc_code})")
+            if rc_code in [4, 5, 134, 135]:
+                # Stop automatic reconnect loop hammering when credentials are unauthorized
+                try:
+                    client.disconnect()
+                except Exception:
+                    pass
 
     def _on_mqtt_message(self, client, userdata, msg):
         topic = msg.topic

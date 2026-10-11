@@ -229,9 +229,9 @@ if ($action == "get_daemon_diagnostics") {
             } elseif ($last_error) {
                 $reason_code = "CRASH_OR_ERROR";
                 if (stripos($last_error, "InvalidCredentials") !== false || stripos($last_error, "Authentication failed") !== false) {
-                    $reason_text = "Viessmann-Anmeldung fehlgeschlagen! Bitte E-Mail, Passwort und Client-ID prüfen. Im Viessmann Developer Portal muss die Redirect URI 'http://localhost:4200/' sein und reCAPTCHA deaktiviert sein.";
-                } elseif (stripos($last_error, "return code 5") !== false || stripos($last_error, "not authorized") !== false) {
-                    $reason_text = "MQTT-Verbindung abgewiesen (Nicht autorisiert / Return Code 5). Bitte Benutzer und Passwort im LoxBerry MQTT Gateway prüfen.";
+                    $reason_text = "Viessmann-Anmeldung fehlgeschlagen! Bitte E-Mail, Passwort und Client-ID prüfen. Im Viessmann Developer Portal muss die Redirect URI exakt 'vicare://oauth-callback/everest' lauten und Google reCAPTCHA deaktiviert sein.";
+                } elseif (stripos($last_error, "return code 5") !== false || stripos($last_error, "rc=135") !== false || stripos($last_error, "not authorized") !== false) {
+                    $reason_text = "MQTT-Verbindung abgewiesen (Nicht autorisiert / Return Code 5 bzw. 135). Der Broker verlangt Benutzer/Passwort. Bitte LoxBerry MQTT Gateway Einstellungen prüfen.";
                 } else {
                     $reason_text = "Dienst hat einen Fehler gemeldet: " . $last_error;
                 }
@@ -245,10 +245,10 @@ if ($action == "get_daemon_diagnostics") {
         if ($last_error) {
             if (stripos($last_error, "InvalidCredentials") !== false || stripos($last_error, "Authentication failed") !== false) {
                 $reason_code = "AUTH_ERROR";
-                $reason_text = "Dienst läuft, aber Viessmann-Anmeldung fehlgeschlagen! Bitte Zugangsdaten und Redirect URI ('http://localhost:4200/') im Developer Portal prüfen.";
-            } elseif (stripos($last_error, "return code 5") !== false || stripos($last_error, "not authorized") !== false) {
+                $reason_text = "Dienst läuft, aber Viessmann-Anmeldung fehlgeschlagen! Bitte Redirect URI ('vicare://oauth-callback/everest') und reCAPTCHA im Developer Portal prüfen.";
+            } elseif (stripos($last_error, "return code 5") !== false || stripos($last_error, "rc=135") !== false || stripos($last_error, "not authorized") !== false) {
                 $reason_code = "MQTT_AUTH_ERROR";
-                $reason_text = "Dienst läuft, aber MQTT-Broker verweigert Verbindung (Return Code 5: nicht autorisiert). MQTT Gateway Zugangsdaten prüfen.";
+                $reason_text = "Dienst läuft, aber MQTT-Broker verweigert Verbindung (Return Code 5 / 135: nicht autorisiert). MQTT Gateway Zugangsdaten prüfen.";
             }
         }
     }
