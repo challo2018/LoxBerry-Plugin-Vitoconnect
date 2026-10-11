@@ -43,16 +43,37 @@ logger = logging.getLogger("vitoconnect-daemon")
 # LoxBerry environment
 LBHOMEDIR = os.environ.get("LBHOMEDIR", "/opt/loxberry")
 PLUGIN_NAME = "Vitoconnect"
-LBPCONFIG = os.environ.get("LBPCONFIG", f"{LBHOMEDIR}/config/plugins/{PLUGIN_NAME}")
-LBPDATA = os.environ.get("LBPDATA", f"{LBHOMEDIR}/data/plugins/{PLUGIN_NAME}")
-LBPLOG = os.environ.get("LBPLOG", f"{LBHOMEDIR}/log/plugins/{PLUGIN_NAME}")
 
-CONFIG_FILE = Path(LBPCONFIG) / "config.json"
-TOKEN_FILE = Path(LBPDATA) / "token.save"
+def resolve_plugin_path(env_var, subdir):
+    val = os.environ.get(env_var)
+    if val:
+        p = Path(val)
+        if p.name == PLUGIN_NAME:
+            return p
+        return p / PLUGIN_NAME
+    return Path(LBHOMEDIR) / subdir / "plugins" / PLUGIN_NAME
+
+LBPCONFIG = resolve_plugin_path("LBPCONFIG", "config")
+LBPDATA = resolve_plugin_path("LBPDATA", "data")
+LBPLOG = resolve_plugin_path("LBPLOG", "log")
+
+def get_config_file():
+    candidates = [
+        LBPCONFIG / "config.json",
+        Path(LBHOMEDIR) / "config" / "plugins" / PLUGIN_NAME / "config.json",
+        Path("/opt/loxberry/config/plugins/Vitoconnect/config.json"),
+        Path(__file__).resolve().parent.parent / "config" / "config.json",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return candidates[0]
+
+CONFIG_FILE = get_config_file()
+TOKEN_FILE = LBPDATA / "token.save"
 PID_FILE = Path("/run/shm") / f"{PLUGIN_NAME}.pid"
 STATS_FILE = Path("/run/shm") / f"{PLUGIN_NAME}_stats.json"
 
-# Fallback PID
 if not Path("/run/shm").exists():
     PID_FILE = Path("/tmp") / f"{PLUGIN_NAME}.pid"
     STATS_FILE = Path("/tmp") / f"{PLUGIN_NAME}_stats.json"
@@ -552,30 +573,41 @@ class VitoconnectDaemon:
         signal.signal(signal.SIGINT, self.stop)
 
         if not self.load_config():
-            logger.error("Configuration failed to load. Exiting.")
-            return 1
+            logger.warning(f"Configuration not found or empty at {self.config_path}. Waiting for user configuration...")
+        else:
+            interval_raw = self.config.get("Cron", {}).get("interval", "60")
+            try:
+                if isinstance(interval_raw, str) and "min" in interval_raw:
+                    mins = int(interval_raw.replace("min", ""))
+                    self.poll_interval = max(60, mins * 60)
+                else:
+                    self.poll_interval = max(60, int(interval_raw))
+            except Exception:
+                self.poll_interval = 60
 
-        interval_raw = self.config.get("Cron", {}).get("interval", "60")
-        try:
-            if isinstance(interval_raw, str) and "min" in interval_raw:
-                # e.g. "01min", "05min"
-                mins = int(interval_raw.replace("min", ""))
-                self.poll_interval = max(60, mins * 60)
-            else:
-                self.poll_interval = max(60, int(interval_raw))
-        except Exception:
-            self.poll_interval = 60
+            logger.info(f"Polling interval set to {self.poll_interval}s")
+            self.init_mqtt()
+            if not self.init_vicare():
+                logger.warning("Initial Viessmann authentication failed. Will retry in main loop.")
 
-        logger.info(f"Polling interval set to {self.poll_interval}s")
-
-        self.init_mqtt()
-        if not self.init_vicare():
-            logger.error("Initial Viessmann authentication failed. Will retry in main loop.")
-
+        self.update_stats_file()
         last_poll_time = 0
+        last_config_check = 0
 
         while self.running:
             now = time.time()
+
+            # If credentials are not yet available, check periodically for config update
+            has_creds = bool(self.config and self.config.get("user") and self.config.get("apikey"))
+            if not has_creds:
+                if now - last_config_check >= 5:
+                    last_config_check = now
+                    if self.load_config():
+                        logger.info("New configuration detected. Initializing...")
+                        self.init_mqtt()
+                        self.init_vicare()
+                time.sleep(1)
+                continue
 
             # Dynamic interval if quota is running low
             actual_interval = self.poll_interval

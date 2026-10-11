@@ -224,6 +224,15 @@ function viewhide() {
 	}
 }
 
+function isTrue(val) {
+	if (val === true || val === 1) return true;
+	if (typeof val === 'string') {
+		var s = val.toLowerCase().trim();
+		return (s === 'true' || s === '1' || s === 'on' || s === 'yes');
+	}
+	return false;
+}
+
 function formFill() {
 	if (config.user) $("#user").val(config.user);
 	if (config.pass) $("#pass").val(config.pass);
@@ -234,19 +243,21 @@ function formFill() {
 	}
 
 	if (config.MQTT) {
-		if (typeof config.MQTT.enabled !== 'undefined') {
-			var en = (config.MQTT.enabled === true || config.MQTT.enabled === "true" || config.MQTT.enabled === "1");
-			$("#MQTT\\.enabled").prop('checked', en).checkboxradio('refresh');
-		}
-		if (typeof config.MQTT.use_gateway !== 'undefined') {
-			var ug = (config.MQTT.use_gateway === true || config.MQTT.use_gateway === "true" || config.MQTT.use_gateway === "1");
-			$("#MQTT\\.use_gateway").prop('checked', ug).checkboxradio('refresh');
-		}
+		var en = (typeof config.MQTT.enabled !== 'undefined') ? isTrue(config.MQTT.enabled) : true;
+		$("#MQTT\\.enabled").prop('checked', en).checkboxradio('refresh');
+
+		var ug = (typeof config.MQTT.use_gateway !== 'undefined') ? isTrue(config.MQTT.use_gateway) : true;
+		$("#MQTT\\.use_gateway").prop('checked', ug).checkboxradio('refresh');
+
 		if (config.MQTT.topic) $("#MQTT\\.topic").val(config.MQTT.topic);
 		if (config.MQTT.host) $("#MQTT\\.host").val(config.MQTT.host);
 		if (config.MQTT.user) $("#MQTT\\.user").val(config.MQTT.user);
 		if (config.MQTT.pass) $("#MQTT\\.pass").val(config.MQTT.pass);
+	} else {
+		$("#MQTT\\.enabled").prop('checked', true).checkboxradio('refresh');
+		$("#MQTT\\.use_gateway").prop('checked', true).checkboxradio('refresh');
 	}
+	viewhide();
 }
 
 function checkPyViCareStatus() {

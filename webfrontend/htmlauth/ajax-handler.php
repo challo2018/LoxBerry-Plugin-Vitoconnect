@@ -32,6 +32,14 @@ if ($action == "saveconfig") {
     foreach ($_POST as $key => $value) {
         $data = generateNew($data, explode("_", $key), 0, $value);
     }
+
+    // Explicitly handle checkboxes so they are stored as booleans (true/false)
+    if (!isset($data["MQTT"])) {
+        $data["MQTT"] = array();
+    }
+    $data["MQTT"]["enabled"] = isset($_POST["MQTT_enabled"]) && in_array(strtolower($_POST["MQTT_enabled"]), ["on", "1", "true", "yes"]);
+    $data["MQTT"]["use_gateway"] = isset($_POST["MQTT_use_gateway"]) && in_array(strtolower($_POST["MQTT_use_gateway"]), ["on", "1", "true", "yes"]);
+
     $jsonstr = json_encode($data, JSON_PRETTY_PRINT);
     if ($jsonstr) {
         if (file_put_contents(CONFIGFILE, $jsonstr) === false) {
@@ -48,8 +56,11 @@ if ($action == "saveconfig") {
 
             // Trigger daemon restart if daemon script exists
             $daemon_run = LBHOMEDIR . "/system/daemons/plugins/" . $plugin_dir;
+            if (!file_exists($daemon_run)) {
+                $daemon_run = dirname(__DIR__, 2) . "/daemon/daemon.sh";
+            }
             if (file_exists($daemon_run)) {
-                shell_exec(escapeshellcmd($daemon_run) . " restart > /dev/null 2>&1 &");
+                shell_exec("/bin/bash " . escapeshellarg($daemon_run) . " restart > /dev/null 2>&1 &");
             }
 
             sendresponse(200, "application/json", file_get_contents(CONFIGFILE));
@@ -78,8 +89,11 @@ if ($action == "pyvicare_upgrade") {
     if ($out) {
         // Also restart daemon after upgrade
         $daemon_run = LBHOMEDIR . "/system/daemons/plugins/" . $plugin_dir;
+        if (!file_exists($daemon_run)) {
+            $daemon_run = dirname(__DIR__, 2) . "/daemon/daemon.sh";
+        }
         if (file_exists($daemon_run)) {
-            shell_exec(escapeshellcmd($daemon_run) . " restart > /dev/null 2>&1 &");
+            shell_exec("/bin/bash " . escapeshellarg($daemon_run) . " restart > /dev/null 2>&1 &");
         }
         sendresponse(200, "application/json", $out);
     }
@@ -99,7 +113,7 @@ if ($action == "daemon_control") {
         $daemon_run = dirname(__DIR__, 2) . "/daemon/daemon.sh";
     }
 
-    $res = shell_exec(escapeshellcmd($daemon_run) . " " . escapeshellarg($cmd) . " 2>&1");
+    $res = shell_exec("/bin/bash " . escapeshellarg($daemon_run) . " " . escapeshellarg($cmd) . " 2>&1");
     sendresponse(200, "application/json", json_encode(["cmd" => $cmd, "output" => trim($res)]));
 }
 

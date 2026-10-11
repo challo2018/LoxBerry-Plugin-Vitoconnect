@@ -34,28 +34,53 @@ start() {
         rm -f "$PID_FILE"
     fi
 
-    if [ ! -f "$VENV_PYTHON" ]; then
-        echo "<ERROR> Python venv not found at $VENV_PYTHON. Run postinstall.sh or pyvicare-manager.py --setup-venv first."
-        return 1
+    if [ ! -f "$DAEMON_SCRIPT" ]; then
+        # Check relative path
+        REL_DAEMON="$(cd "$(dirname "$0")/../bin" 2>/dev/null && pwd)/vitoconnect-daemon.py"
+        if [ -f "$REL_DAEMON" ]; then
+            DAEMON_SCRIPT="$REL_DAEMON"
+        else
+            echo "<ERROR> Daemon script not found at $DAEMON_SCRIPT."
+            return 1
+        fi
     fi
 
-    if [ ! -f "$DAEMON_SCRIPT" ]; then
-        echo "<ERROR> Daemon script not found at $DAEMON_SCRIPT."
-        return 1
+    if [ ! -f "$VENV_PYTHON" ]; then
+        # Check relative venv
+        REL_VENV="$(cd "$(dirname "$0")/../data/venv/bin" 2>/dev/null && pwd)/python3"
+        if [ -f "$REL_VENV" ]; then
+            VENV_PYTHON="$REL_VENV"
+        elif command -v python3 >/dev/null 2>&1; then
+            VENV_PYTHON=$(command -v python3)
+        else
+            echo "<ERROR> Python venv not found at $VENV_PYTHON."
+            return 1
+        fi
     fi
 
     mkdir -p "$(dirname "$LOG_FILE")"
-    chown -R loxberry:loxberry "$(dirname "$LOG_FILE")" 2>/dev/null
 
-    echo "Starting $PLUGIN_NAME daemon..."
-    # Start as user loxberry
-    su - loxberry -c "nohup $VENV_PYTHON $DAEMON_SCRIPT >> $LOG_FILE 2>&1 &"
+    CURRENT_USER=$(id -u -n 2>/dev/null || whoami)
+    echo "Starting $PLUGIN_NAME daemon as user $CURRENT_USER..."
+
+    if [ "$CURRENT_USER" = "root" ]; then
+        chown -R loxberry:loxberry "$(dirname "$LOG_FILE")" 2>/dev/null
+        su - loxberry -c "nohup \"$VENV_PYTHON\" \"$DAEMON_SCRIPT\" >> \"$LOG_FILE\" 2>&1 &"
+    else
+        nohup "$VENV_PYTHON" "$DAEMON_SCRIPT" >> "$LOG_FILE" 2>&1 &
+    fi
     sleep 1
 
     if [ -f "$PID_FILE" ]; then
         echo "$PLUGIN_NAME started with PID $(cat "$PID_FILE")."
     else
-        echo "<WARNING> Daemon started, but PID file not created yet."
+        PID=$(pgrep -f "vitoconnect-daemon.py" | head -n 1)
+        if [ -n "$PID" ]; then
+            echo "$PID" > "$PID_FILE" 2>/dev/null
+            echo "$PLUGIN_NAME started with PID $PID."
+        else
+            echo "<WARNING> Daemon started, but PID file not created yet."
+        fi
     fi
 }
 
@@ -77,7 +102,6 @@ stop() {
         rm -f "$PID_FILE"
     else
         echo "$PLUGIN_NAME daemon is not running (no PID file)."
-        # Clean up any orphan processes
         pkill -f "vitoconnect-daemon.py" 2>/dev/null
     fi
 }
@@ -89,6 +113,12 @@ status() {
             echo "$PLUGIN_NAME daemon is RUNNING (PID $PID)."
             return 0
         fi
+    fi
+    PID=$(pgrep -f "vitoconnect-daemon.py" | head -n 1)
+    if [ -n "$PID" ]; then
+        echo "$PID" > "$PID_FILE" 2>/dev/null
+        echo "$PLUGIN_NAME daemon is RUNNING (PID $PID)."
+        return 0
     fi
     echo "$PLUGIN_NAME daemon is STOPPED."
     return 1
