@@ -10,7 +10,8 @@ $template_title = "Viessmann Vitoconnect Gateway";
 $helplink = "https://wiki.loxberry.de/plugins/vitoconnect/start";
 $helptemplate = "help.html";
 
-LBWeb::lbheader($template_title, $helplink, $helptemplate);
+// 4th argument true = nojqm (activates LoxBerry DS)
+LBWeb::lbheader($template_title, $helplink, $helptemplate, true);
 
 $navbar[1]['active'] = null;
 $navbar[2]['active'] = null;
@@ -24,22 +25,6 @@ $plugin_dir = defined("LBPPLUGINDIR") ? LBPPLUGINDIR : "Vitoconnect";
 	font-family: monospace;
 	font-size: 100%;
 	font-weight: bold;
-}
-.card-box {
-	background: #ffffff;
-	border: 1px solid #dcdde1;
-	border-radius: 8px;
-	padding: 18px 20px;
-	margin-bottom: 22px;
-	box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
-.card-header {
-	font-size: 1.15rem;
-	font-weight: 600;
-	color: #2f3640;
-	margin: 0 0 14px 0;
-	padding-bottom: 8px;
-	border-bottom: 2px solid #f1f2f6;
 }
 .header-flex {
 	display: flex;
@@ -110,12 +95,6 @@ $plugin_dir = defined("LBPPLUGINDIR") ? LBPPLUGINDIR : "Vitoconnect";
 	border: 1px solid #bbf7d0;
 }
 @media (max-width: 640px) {
-	.card-box {
-		padding: 14px;
-	}
-	.card-header {
-		font-size: 1.05rem;
-	}
 	.console-box {
 		height: 280px;
 		font-size: 80%;
@@ -124,9 +103,11 @@ $plugin_dir = defined("LBPPLUGINDIR") ? LBPPLUGINDIR : "Vitoconnect";
 }
 </style>
 
+<div class="lb-content">
+
 <!-- DIENST-DIAGNOSE & STATUS -->
-<div class="card-box" id="diag-container">
-	<h3 class="card-header">Dienst-Status & Fehler-Diagnose</h3>
+<div class="lb-card" id="diag-container" style="margin-bottom: 20px;">
+	<h4>Dienst-Status & Fehler-Diagnose</h4>
 	<div class="header-flex">
 		<div>
 			<span style="font-size: 90%; color: #64748b; font-weight: bold;">ZUSTAND:</span>
@@ -134,9 +115,9 @@ $plugin_dir = defined("LBPPLUGINDIR") ? LBPPLUGINDIR : "Vitoconnect";
 			<span id="diag-pid" style="margin-left: 8px; color: #64748b; font-size: 85%;"></span>
 		</div>
 		<div>
-			<button class="ui-btn ui-btn-inline ui-mini" id="btn-start">Starten</button>
-			<button class="ui-btn ui-btn-inline ui-mini" id="btn-restart">Neustarten</button>
-			<button class="ui-btn ui-btn-inline ui-mini" id="btn-stop">Stoppen</button>
+			<button class="lb-btn lb-btn-sm" id="btn-start">Starten</button>
+			<button class="lb-btn lb-btn-sm" id="btn-restart">Neustarten</button>
+			<button class="lb-btn lb-btn-sm lb-btn-danger" id="btn-stop">Stoppen</button>
 		</div>
 	</div>
 
@@ -147,15 +128,19 @@ $plugin_dir = defined("LBPPLUGINDIR") ? LBPPLUGINDIR : "Vitoconnect";
 </div>
 
 <!-- LIVE DAEMON LOG CONSOLE -->
-<div class="card-box">
+<div class="lb-card" style="margin-bottom: 20px;">
 	<div class="header-flex">
 		<div>
-			<h3 class="card-header" style="margin: 0; border: none; padding: 0;">Live Daemon Log (<span id="log-filename" style="color: #64748b; font-size: 90%;">daemon.log</span>)</h3>
+			<h4 style="margin: 0;">Live Daemon Log (<span id="log-filename" style="color: #64748b; font-size: 90%;">daemon.log</span>)</h4>
 		</div>
 		<div style="display: flex; align-items: center; gap: 8px;">
-			<label style="margin: 0; font-size: 85%;"><input type="checkbox" id="auto-refresh-log" checked> Auto-Refresh (3s)</label>
-			<button class="ui-btn ui-btn-inline ui-mini" id="btn-refresh-log">Aktualisieren</button>
-			<button class="ui-btn ui-btn-inline ui-mini" id="btn-clear-log">Log leeren</button>
+			<label class="lb-toggle" style="vertical-align: middle;">
+				<input type="checkbox" id="auto-refresh-log" checked>
+				<span class="lb-toggle-slider"></span>
+			</label>
+			<span style="font-size: 85%;">Auto-Refresh (3s)</span>
+			<button class="lb-btn lb-btn-sm" id="btn-refresh-log">Aktualisieren</button>
+			<button class="lb-btn lb-btn-sm" id="btn-clear-log">Log leeren</button>
 		</div>
 	</div>
 
@@ -163,16 +148,16 @@ $plugin_dir = defined("LBPPLUGINDIR") ? LBPPLUGINDIR : "Vitoconnect";
 </div>
 
 <!-- LOXBERRY LOGFILES ARCHIV -->
-<div class="card-box">
-	<h3 class="card-header">LoxBerry System-Logdateien</h3>
+<div class="lb-card" style="margin-bottom: 20px;">
+	<h4>LoxBerry System-Logdateien</h4>
 	<p style="font-size: 90%; color: #475569; margin: 0 0 10px 0;">Hier findest du alle Logfiles dieses Plugins zur detaillierten Fehleranalyse und für Supportanfragen im LoxForum:</p>
 
 <?php
 if ($handle = opendir($lbplogdir)) {
     while (false !== ($entry = readdir($handle))) {
         if ($entry != "." && $entry != "..") {
-            echo '<div class="ui-corner-all ui-shadow" style="margin-bottom: 5px;">';
-            echo '<a id="btnlogs" data-role="button" href="/admin/system/tools/logfile.cgi?logfile=/plugins/' . $plugin_dir . '/' . $entry . '&header=html&format=template" target="_blank" data-inline="true" data-mini="true">' . htmlspecialchars($entry) . '</a>';
+            echo '<div style="margin-bottom: 6px;">';
+            echo '<a class="lb-btn lb-btn-sm" href="/admin/system/tools/logfile.cgi?logfile=/plugins/' . $plugin_dir . '/' . $entry . '&header=html&format=template" target="_blank">' . htmlspecialchars($entry) . '</a>';
             echo '</div>';
         }
     }
@@ -180,6 +165,8 @@ if ($handle = opendir($lbplogdir)) {
 }
 ?>
 </div>
+
+</div><!-- /lb-content -->
 
 <?php
 LBWeb::lbfooter();

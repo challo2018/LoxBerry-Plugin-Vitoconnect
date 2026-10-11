@@ -12,9 +12,12 @@ $template_title = "Viessmann Vitoconnect Gateway";
 $helplink = "https://wiki.loxberry.de/plugins/vitoconnect/start";
 $helptemplate = "help.html";
 
-LBWeb::lbheader($template_title, $helplink, $helptemplate);
+// 4th argument true = nojqm (activates LoxBerry DS components.css)
+LBWeb::lbheader($template_title, $helplink, $helptemplate, true);
 
 ?>
+
+<div class="lb-content">
 
 <style>
 .mono {
@@ -109,8 +112,8 @@ LBWeb::lbheader($template_title, $helplink, $helptemplate);
 </style>
 
 <!-- STATUS & SERVICE CARD -->
-<div class="card-box">
-	<h3 class="card-header">Dienst- und Bibliotheks-Status</h3>
+<div class="lb-card" style="margin-bottom: 20px;">
+	<h4>Dienst- und Bibliotheks-Status</h4>
 	<div class="stats-grid">
 		<div class="stat-card">
 			<div>
@@ -118,7 +121,7 @@ LBWeb::lbheader($template_title, $helplink, $helptemplate);
 				<div class="stat-value" id="daemon-status-badge"><span class="badge-warn">Prüfe...</span></div>
 			</div>
 			<div style="margin-top: 12px;">
-				<button class="ui-btn ui-btn-inline ui-mini" id="btn-daemon-restart">Dienst neustarten</button>
+				<button class="lb-btn lb-btn-sm" id="btn-daemon-restart">Dienst neustarten</button>
 			</div>
 		</div>
 
@@ -131,7 +134,7 @@ LBWeb::lbheader($template_title, $helplink, $helptemplate);
 				</div>
 			</div>
 			<div style="margin-top: 12px;">
-				<button class="ui-btn ui-btn-inline ui-mini" id="btn-pyvicare-update">PyViCare aktualisieren</button>
+				<button class="lb-btn lb-btn-sm" id="btn-pyvicare-update">PyViCare aktualisieren</button>
 			</div>
 		</div>
 
@@ -143,7 +146,7 @@ LBWeb::lbheader($template_title, $helplink, $helptemplate);
 					<small style="color: green; font-weight: normal;">Verbleibend: <b id="quota-remaining">-</b></small>
 				</div>
 			</div>
-			<p class="hint" style="margin: 8px 0 0 0; font-size: 75%;">Max. 1.450 Calls / 24 Std.</p>
+			<p class="lb-form-help hint" style="margin: 8px 0 0 0; font-size: 75%;">Max. 1.450 Calls / 24 Std.</p>
 		</div>
 	</div>
 	<div id="service-msg" style="margin-top: 12px; font-weight: bold;"></div>
@@ -152,81 +155,111 @@ LBWeb::lbheader($template_title, $helplink, $helptemplate);
 <!-- FORM SETTINGS -->
 <form id="form" onsubmit="return false;">
 
-<div class="card-box">
-	<h3 class="card-header">Viessmann Account & API</h3>
+<div class="lb-card" style="margin-bottom: 20px;">
+	<h4>Viessmann Account & API</h4>
 	<p><i>Verbindet sich mit der Viessmann Developer API über die moderne <b>PyViCare</b> Bibliothek mit automatischem OAuth2 Token-Refresh.</i></p>
 
-	<div data-role="fieldcontain">
-		<label for="user">E-Mail (Benutzername)</label>
-		<input name="user" id="user" type="text" />
-		<p class="hint">Deine E-Mail-Adresse des <i>Viessmann Developer Portal</i> bzw. ViCare Accounts.</p>
+	<div class="lb-form-row">
+		<label class="lb-form-label" for="user">E-Mail (Benutzername)</label>
+		<div class="lb-form-field">
+			<input class="lb-input" name="user" id="user" type="text" placeholder="name@example.com" />
+		</div>
 	</div>
+	<div class="lb-form-help hint">Deine E-Mail-Adresse des <i>Viessmann Developer Portal</i> bzw. ViCare Accounts.</div>
 
-	<div data-role="fieldcontain">
-		<label for="pass">Passwort</label>
-		<input name="pass" id="pass" type="password">
-		<p class="hint">Das Passwort deines Viessmann Accounts.</p>
+	<div class="lb-form-row" style="margin-top: 12px;">
+		<label class="lb-form-label" for="pass">Passwort</label>
+		<div class="lb-form-field">
+			<input class="lb-input" name="pass" id="pass" type="password">
+		</div>
 	</div>
+	<div class="lb-form-help hint">Das Passwort deines Viessmann Accounts.</div>
 
-	<div data-role="fieldcontain">
-		<label for="apikey">Client-ID (API-Key)</label>
-		<input name="apikey" id="apikey" type="text" />
-		<p class="hint">Die Client-ID aus dem <a href="https://developer.viessmann.com/" target="_blank">Viessmann Developer Portal</a>. <b>Wichtig:</b> Redirect URI dort exakt auf <span class="mono">vicare://oauth-callback/everest</span> setzen und <i>Google reCAPTCHA</i> auf <b>Disabled</b> stellen.</p>
+	<div class="lb-form-row" style="margin-top: 12px;">
+		<label class="lb-form-label" for="apikey">Client-ID (API-Key)</label>
+		<div class="lb-form-field">
+			<input class="lb-input" name="apikey" id="apikey" type="text" />
+		</div>
 	</div>
+	<div class="lb-form-help hint">Die Client-ID aus dem <a href="https://developer.viessmann.com/" target="_blank">Viessmann Developer Portal</a>. <b>Wichtig:</b> Redirect URI dort exakt auf <span class="mono">vicare://oauth-callback/everest</span> setzen und <i>Google reCAPTCHA</i> auf <b>Disabled</b> stellen.</div>
 </div>
 
-<div class="card-box">
-	<h3 class="card-header">Abfrage-Intervall</h3>
+<div class="lb-card" style="margin-bottom: 20px;">
+	<h4>Abfrage-Intervall</h4>
 
-	<div data-role="fieldcontain">
-		<label for="Cron.interval">Intervall</label>
-		<select name="Cron.interval" id="Cron.interval">
-			<option value="60">60 Sekunden (~1.440 Calls / Tag)</option>
-			<option value="120" selected>120 Sekunden (~720 Calls / Tag - Empfohlen)</option>
-			<option value="180">3 Minuten (~480 Calls / Tag)</option>
-			<option value="300">5 Minuten (~288 Calls / Tag)</option>
-			<option value="600">10 Minuten (~144 Calls / Tag)</option>
-			<option value="900">15 Minuten (~96 Calls / Tag)</option>
-		</select>
-		<p class="hint">Bestimmt, wie oft neue Werte von Viessmann abgerufen werden. <b>Empfehlung:</b> Mindestens 60-120 Sek., um das API-Tageslimit nicht zu überschreiten.</p>
+	<div class="lb-form-row">
+		<label class="lb-form-label" for="Cron.interval">Intervall</label>
+		<div class="lb-form-field">
+			<select class="lb-select" name="Cron.interval" id="Cron.interval">
+				<option value="60">60 Sekunden (~1.440 Calls / Tag)</option>
+				<option value="120" selected>120 Sekunden (~720 Calls / Tag - Empfohlen)</option>
+				<option value="180">3 Minuten (~480 Calls / Tag)</option>
+				<option value="300">5 Minuten (~288 Calls / Tag)</option>
+				<option value="600">10 Minuten (~144 Calls / Tag)</option>
+				<option value="900">15 Minuten (~96 Calls / Tag)</option>
+			</select>
+		</div>
 	</div>
+	<div class="lb-form-help hint">Bestimmt, wie oft neue Werte von Viessmann abgerufen werden. <b>Empfehlung:</b> Mindestens 60-120 Sek., um das API-Tageslimit nicht zu überschreiten.</div>
 </div>
 
-<div class="card-box">
-	<h3 class="card-header">MQTT Datenübertragung & Bidirektionale Steuerung</h3>
+<div class="lb-card" style="margin-bottom: 20px;">
+	<h4>MQTT Datenübertragung & Bidirektionale Steuerung</h4>
 
-	<fieldset data-role="controlgroup">
-		<input type="checkbox" name="MQTT.enabled" id="MQTT.enabled" class="refreshdisplay" checked>
-		<label for="MQTT.enabled">MQTT aktivieren (Empfohlen)</label>
-		<p class="hint">Überträgt Werte bei Änderung (Change-Detection) an den MQTT Broker und erlaubt Steuerung via MQTT.</p>
-	</fieldset>
-
-	<div data-role="fieldcontain" class="mqtthidden">
-		<label for="MQTT.topic">Basis-Topic</label>
-		<input name="MQTT.topic" id="MQTT.topic" type="text" value="vitoconnect">
-		<p class="hint">Standard: <span class="mono">vitoconnect</span>. Der Miniserver abonniert <span class="mono">vitoconnect/#</span>. Befehle können an <span class="mono">vitoconnect/set/...</span> gesendet werden.</p>
+	<div class="lb-form-row">
+		<label class="lb-form-label" for="MQTT.enabled">MQTT aktivieren</label>
+		<div class="lb-form-field">
+			<label class="lb-toggle">
+				<input type="checkbox" name="MQTT.enabled" id="MQTT.enabled" class="refreshdisplay" checked>
+				<span class="lb-toggle-slider"></span>
+			</label>
+		</div>
 	</div>
+	<div class="lb-form-help hint">Überträgt Werte bei Änderung (Change-Detection) an den MQTT Broker und erlaubt Steuerung via MQTT.</div>
 
-	<fieldset data-role="controlgroup" class="mqtthidden">
-		<input type="checkbox" name="MQTT.use_gateway" id="MQTT.use_gateway" class="refreshdisplay" checked>
-		<label for="MQTT.use_gateway">LoxBerry MQTT Gateway Einstellungen automatisch nutzen</label>
-		<p class="hint">Wenn aktiv, werden Broker-Host, Port und Zugangsdaten direkt aus dem LoxBerry MQTT Gateway übernommen.</p>
-	</fieldset>
+	<div class="mqtthidden" style="margin-top: 14px;">
+		<div class="lb-form-row">
+			<label class="lb-form-label" for="MQTT.topic">Basis-Topic</label>
+			<div class="lb-form-field">
+				<input class="lb-input" name="MQTT.topic" id="MQTT.topic" type="text" value="vitoconnect">
+			</div>
+		</div>
+		<div class="lb-form-help hint">Standard: <span class="mono">vitoconnect</span>. Der Miniserver abonniert <span class="mono">vitoconnect/#</span>. Befehle können an <span class="mono">vitoconnect/set/...</span> gesendet werden.</div>
 
-	<div data-role="fieldcontain" style="display:none" class="mqtthosthidden">
-		<label for="MQTT.host">Eigener Broker Host:Port</label>
-		<input name="MQTT.host" id="MQTT.host" type="text" placeholder="127.0.0.1:1883">
-		<p class="hint">Nur angeben, wenn ein externer Broker verwendet werden soll.</p>
-	</div>
+		<div class="lb-form-row" style="margin-top: 14px;">
+			<label class="lb-form-label" for="MQTT.use_gateway">LoxBerry MQTT Gateway</label>
+			<div class="lb-form-field">
+				<label class="lb-toggle">
+					<input type="checkbox" name="MQTT.use_gateway" id="MQTT.use_gateway" class="refreshdisplay" checked>
+					<span class="lb-toggle-slider"></span>
+				</label>
+			</div>
+		</div>
+		<div class="lb-form-help hint">Automatische Erkennung der Broker-Zugangsdaten aus LoxBerry (keine manuelle Eingabe nötig).</div>
 
-	<div data-role="fieldcontain" style="display:none" class="mqtthosthidden">
-		<label for="MQTT.user">Broker Benutzer</label>
-		<input name="MQTT.user" id="MQTT.user" type="text">
-	</div>
+		<div class="mqtthosthidden" style="display:none; margin-top: 14px;">
+			<div class="lb-form-row">
+				<label class="lb-form-label" for="MQTT.host">Eigener Broker Host:Port</label>
+				<div class="lb-form-field">
+					<input class="lb-input" name="MQTT.host" id="MQTT.host" type="text" placeholder="127.0.0.1:1883">
+				</div>
+			</div>
+			<div class="lb-form-help hint">Nur angeben, wenn ein externer Broker verwendet werden soll.</div>
 
-	<div data-role="fieldcontain" style="display:none" class="mqtthosthidden">
-		<label for="MQTT.pass">Broker Passwort</label>
-		<input name="MQTT.pass" id="MQTT.pass" type="password">
+			<div class="lb-form-row" style="margin-top: 12px;">
+				<label class="lb-form-label" for="MQTT.user">Broker Benutzer</label>
+				<div class="lb-form-field">
+					<input class="lb-input" name="MQTT.user" id="MQTT.user" type="text">
+				</div>
+			</div>
+
+			<div class="lb-form-row" style="margin-top: 12px;">
+				<label class="lb-form-label" for="MQTT.pass">Broker Passwort</label>
+				<div class="lb-form-field">
+					<input class="lb-input" name="MQTT.pass" id="MQTT.pass" type="password">
+				</div>
+			</div>
+		</div>
 	</div>
 </div>
 
@@ -236,7 +269,7 @@ LBWeb::lbheader($template_title, $helplink, $helptemplate);
 	<span id="savemessages"></span>
 </div>
 <div style="display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
-	<button class="ui-btn ui-btn-icon-right ui-btn-b" id="saveapply" data-inline="true">Einstellungen speichern & anwenden</button>
+	<button class="lb-btn lb-btn-primary" id="saveapply">Einstellungen speichern & anwenden</button>
 </div>
 
 <div id="jsonconfig" style="display:none">
@@ -249,6 +282,8 @@ if( !empty($configjson) or !empty( json_decode($configjson) ) ) {
 }
 ?>
 </div>
+
+</div><!-- /lb-content -->
 
 <?php
 LBWeb::lbfooter();
@@ -303,23 +338,23 @@ function formFill() {
 	if (config.apikey) $("#apikey").val(config.apikey);
 
 	if (config.Cron && config.Cron.interval) {
-		$("#Cron\\.interval").val(config.Cron.interval).selectmenu("refresh", true);
+		$("#Cron\\.interval").val(config.Cron.interval);
 	}
 
 	if (config.MQTT) {
 		var en = (typeof config.MQTT.enabled !== 'undefined') ? isTrue(config.MQTT.enabled) : true;
-		$("#MQTT\\.enabled").prop('checked', en).checkboxradio('refresh');
+		$("#MQTT\\.enabled").prop('checked', en);
 
 		var ug = (typeof config.MQTT.use_gateway !== 'undefined') ? isTrue(config.MQTT.use_gateway) : true;
-		$("#MQTT\\.use_gateway").prop('checked', ug).checkboxradio('refresh');
+		$("#MQTT\\.use_gateway").prop('checked', ug);
 
 		if (config.MQTT.topic) $("#MQTT\\.topic").val(config.MQTT.topic);
 		if (config.MQTT.host) $("#MQTT\\.host").val(config.MQTT.host);
 		if (config.MQTT.user) $("#MQTT\\.user").val(config.MQTT.user);
 		if (config.MQTT.pass) $("#MQTT\\.pass").val(config.MQTT.pass);
 	} else {
-		$("#MQTT\\.enabled").prop('checked', true).checkboxradio('refresh');
-		$("#MQTT\\.use_gateway").prop('checked', true).checkboxradio('refresh');
+		$("#MQTT\\.enabled").prop('checked', true);
+		$("#MQTT\\.use_gateway").prop('checked', true);
 	}
 	viewhide();
 }
@@ -344,9 +379,9 @@ function checkPyViCareStatus() {
 		}
 
 		if (data.update_available) {
-			$("#btn-pyvicare-update").addClass("ui-btn-b").text("Update verfügbar: " + data.latest_pypi_version);
+			$("#btn-pyvicare-update").addClass("lb-btn-primary").text("Update verfügbar: " + data.latest_pypi_version);
 		} else {
-			$("#btn-pyvicare-update").text("PyViCare ist aktuell");
+			$("#btn-pyvicare-update").removeClass("lb-btn-primary").text("PyViCare ist aktuell");
 		}
 	})
 	.fail(function() {
@@ -373,7 +408,7 @@ function restartDaemon() {
 	$("#service-msg").css("color", "blue").text("Starte Dienst neu...");
 	$.getJSON("ajax-handler.php?action=daemon_control&cmd=restart")
 	.done(function(res) {
-		$("#service-msg").css("color", "green").text("Dienst neugestartet.");
+		$("#service-msg").css("color", "green").text(res.message || "Dienst neugestartet.");
 		setTimeout(checkPyViCareStatus, 2000);
 	})
 	.fail(function() {
@@ -383,7 +418,7 @@ function restartDaemon() {
 
 function updatePyViCare() {
 	$("#service-msg").css("color", "blue").text("Aktualisiere PyViCare im Hintergrund (pip install --upgrade)... Bitte warten.");
-	$("#btn-pyvicare-update").addClass("ui-disabled");
+	$("#btn-pyvicare-update").prop("disabled", true).addClass("lb-disabled");
 
 	$.getJSON("ajax-handler.php?action=pyvicare_upgrade")
 	.done(function(res) {
@@ -392,12 +427,12 @@ function updatePyViCare() {
 		} else {
 			$("#service-msg").css("color", "red").text("Upgrade fehlgeschlagen: " + (res.error || "Unbekannter Fehler"));
 		}
-		$("#btn-pyvicare-update").removeClass("ui-disabled");
+		$("#btn-pyvicare-update").prop("disabled", false).removeClass("lb-disabled");
 		checkPyViCareStatus();
 	})
 	.fail(function() {
 		$("#service-msg").css("color", "red").text("Netzwerkfehler beim Aktualisieren.");
-		$("#btn-pyvicare-update").removeClass("ui-disabled");
+		$("#btn-pyvicare-update").prop("disabled", false).removeClass("lb-disabled");
 	});
 }
 

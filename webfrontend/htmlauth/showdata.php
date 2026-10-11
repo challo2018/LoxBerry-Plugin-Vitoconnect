@@ -12,10 +12,11 @@ $template_title = "Viessmann Vitoconnect Gateway";
 $helplink = "https://wiki.loxberry.de/plugins/vitoconnect/start";
 $helptemplate = "help.html";
 
-LBWeb::lbheader($template_title, $helplink, $helptemplate);
+// 4th argument true = nojqm (activates LoxBerry DS)
+LBWeb::lbheader($template_title, $helplink, $helptemplate, true);
 
 if (!file_exists(CONFIGFILE)) {
-	echo "<p>Bitte zuerst die Einstellungen konfigurieren und speichern.</p>";
+	echo "<div class='lb-content'><div class='lb-card'><p>Bitte zuerst die Einstellungen konfigurieren und speichern.</p></div></div>";
 	LBWeb::lbfooter();
 	exit();
 }
@@ -33,22 +34,6 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 	font-weight: bold;
 	color: #007000;
 	word-break: break-all;
-}
-.card-box {
-	background: #ffffff;
-	border: 1px solid #dcdde1;
-	border-radius: 8px;
-	padding: 18px 20px;
-	margin-bottom: 22px;
-	box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
-.card-header {
-	font-size: 1.15rem;
-	font-weight: 600;
-	color: #2f3640;
-	margin: 0 0 14px 0;
-	padding-bottom: 8px;
-	border-bottom: 2px solid #f1f2f6;
 }
 .stats-grid {
 	display: grid;
@@ -84,27 +69,6 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 	-webkit-overflow-scrolling: touch;
 	margin-top: 10px;
 }
-.topic-table {
-	width: 100%;
-	border-collapse: collapse;
-	font-size: 90%;
-}
-.topic-table th, .topic-table td {
-	border: 1px solid #e2e8f0;
-	padding: 9px 12px;
-	text-align: left;
-}
-.topic-table th {
-	background-color: #f1f5f9;
-	color: #334155;
-	font-weight: 700;
-}
-.topic-table tr:nth-child(even) {
-	background-color: #f8fafc;
-}
-.topic-table tr:hover {
-	background-color: #f1f5f9;
-}
 .badge-write {
 	background: #0284c7;
 	color: white;
@@ -123,12 +87,6 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 	font-weight: 600;
 	display: inline-block;
 }
-.copy-btn {
-	cursor: pointer;
-	padding: 2px 8px;
-	font-size: 80%;
-	margin-left: 6px;
-}
 .test-panel-grid {
 	display: grid;
 	grid-template-columns: 2fr 1fr auto;
@@ -137,12 +95,6 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 	margin-top: 10px;
 }
 @media (max-width: 768px) {
-	.card-box {
-		padding: 14px;
-	}
-	.card-header {
-		font-size: 1.05rem;
-	}
 	.stats-grid {
 		grid-template-columns: 1fr;
 		gap: 10px;
@@ -153,9 +105,11 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 }
 </style>
 
+<div class="lb-content">
+
 <!-- STATUS & HEADER -->
-<div class="card-box">
-	<h3 class="card-header">Dienst-Status & Live-Zähler</h3>
+<div class="lb-card" style="margin-bottom: 20px;">
+	<h4>Dienst-Status & Live-Zähler</h4>
 	<div class="stats-grid">
 		<div class="stat-card">
 			<div>
@@ -179,7 +133,7 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 				<div class="stat-value" id="stat-lastpoll">-</div>
 			</div>
 			<div style="margin-top: 10px;">
-				<button class="ui-btn ui-btn-inline ui-mini" id="btn-force-poll">Jetzt abfragen (Poll)</button>
+				<button class="lb-btn lb-btn-sm" id="btn-force-poll">Jetzt abfragen (Poll)</button>
 			</div>
 		</div>
 	</div>
@@ -187,14 +141,14 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 </div>
 
 <!-- INTERAKTIVES TEST-PANEL (BEFEHLE SCHREIBEN) -->
-<div class="card-box" style="border-left: 4px solid #0284c7;">
-	<h3 class="card-header" style="color: #0369a1;">Steuerung testen (Befehl an Viessmann senden)</h3>
+<div class="lb-card" style="margin-bottom: 20px; border-left: 4px solid #0284c7;">
+	<h4 style="color: #0369a1;">Steuerung testen (Befehl an Viessmann senden)</h4>
 	<p style="font-size: 90%; color: #475569; margin: 0 0 10px 0;">Hier kannst du Steuerbefehle direkt über MQTT an deine Heizung senden, um die Funktion vor der Einbindung in Loxone Config zu testen.</p>
 
 	<div class="test-panel-grid">
 		<div>
-			<label for="test-target-select" style="font-size: 85%; font-weight: bold;">Ziel-Datenpunkt auswählen:</label>
-			<select id="test-target-select">
+			<label class="lb-form-label" for="test-target-select" style="font-size: 85%; font-weight: bold;">Ziel-Datenpunkt auswählen:</label>
+			<select class="lb-select" id="test-target-select">
 				<option value="<?=$mqtttopic;?>/set/circuit_0/normal_temperature">Heizkreis 0: Normal-Sollwert (z.B. 21.0)</option>
 				<option value="<?=$mqtttopic;?>/set/circuit_0/comfort_temperature">Heizkreis 0: Komfort-Sollwert (z.B. 23.0)</option>
 				<option value="<?=$mqtttopic;?>/set/circuit_0/reduced_temperature">Heizkreis 0: Absenk-Sollwert (z.B. 17.0)</option>
@@ -204,19 +158,19 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 			</select>
 		</div>
 		<div>
-			<label for="test-target-val" style="font-size: 85%; font-weight: bold;">Zu sendender Wert:</label>
-			<input type="text" id="test-target-val" placeholder="z. B. 21.5">
+			<label class="lb-form-label" for="test-target-val" style="font-size: 85%; font-weight: bold;">Zu sendender Wert:</label>
+			<input class="lb-input" type="text" id="test-target-val" placeholder="z. B. 21.5">
 		</div>
 		<div>
-			<button class="ui-btn ui-btn-inline ui-btn-b ui-mini" id="btn-send-command">Befehl senden</button>
+			<button class="lb-btn lb-btn-primary lb-btn-sm" id="btn-send-command">Befehl senden</button>
 		</div>
 	</div>
 	<div id="cmd-feedback" style="margin-top: 8px; font-weight: bold;"></div>
 </div>
 
 <!-- LIVE-TABELLE DER VERFÜGBAREN DATENPUNKTE -->
-<div class="card-box">
-	<h3 class="card-header">Live-Datenpunkte deiner Anlage</h3>
+<div class="lb-card" style="margin-bottom: 20px;">
+	<h4>Live-Datenpunkte deiner Anlage</h4>
 	<p style="font-size: 90%; color: #475569; margin: 0 0 10px 0;">
 		Diese Tabelle zeigt alle aktuell von deiner Viessmann-Anlage gemeldeten Datenpunkte mit aktuellem Live-Wert. 
 		Nutze das Suchfeld, um nach bestimmten Werten zu filtern. Klicke auf <b>[Kopieren]</b>, um das Topic für Loxone in die Zwischenablage zu kopieren.
@@ -224,15 +178,19 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 
 	<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px;">
 		<div style="flex: 1 1 280px;">
-			<input type="text" id="datapoint-search" placeholder="Filter nach Beschreibung oder Topic (z. B. Temperatur, Brenner, HK0)...">
+			<input class="lb-input" type="text" id="datapoint-search" placeholder="Filter nach Beschreibung oder Topic (z. B. Temperatur, Brenner, HK0)...">
 		</div>
 		<div>
-			<label style="font-size: 85%;"><input type="checkbox" id="auto-refresh-check" checked> Live-Aktualisierung (5s)</label>
+			<label class="lb-toggle" style="vertical-align: middle;">
+				<input type="checkbox" id="auto-refresh-check" checked>
+				<span class="lb-toggle-slider"></span>
+			</label>
+			<span style="font-size: 85%; margin-left: 6px;">Live-Aktualisierung (5s)</span>
 		</div>
 	</div>
 
 	<div class="table-responsive">
-		<table class="topic-table" id="datapoints-table">
+		<table class="lb-table" id="datapoints-table">
 			<thead>
 				<tr>
 					<th style="min-width: 180px;">Beschreibung / Sensor</th>
@@ -252,12 +210,12 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 </div>
 
 <!-- ÜBERSICHT STEUERBARER BEFEHLE -->
-<div class="card-box">
-	<h3 class="card-header">Übersicht steuerbarer Befehle (Schreiben)</h3>
+<div class="lb-card" style="margin-bottom: 20px;">
+	<h4>Übersicht steuerbarer Befehle (Schreiben)</h4>
 	<p style="font-size: 90%; color: #475569; margin: 0 0 10px 0;">Um diese Werte aus dem Loxone Miniserver zu ändern, sende eine Nachricht an das jeweilige <b>set-Topic</b>:</p>
 
 	<div class="table-responsive">
-		<table class="topic-table">
+		<table class="lb-table">
 			<thead>
 				<tr>
 					<th>Befehl / MQTT Topic</th>
@@ -305,6 +263,8 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 		</table>
 	</div>
 </div>
+
+</div><!-- /lb-content -->
 
 <?php
 LBWeb::lbfooter();
@@ -405,7 +365,7 @@ function loadLiveValues() {
 			html += "<td><b>" + escapeHtml(desc) + "</b></td>";
 			html += "<td><span style='font-size:105%;font-weight:bold;color:#1e293b;'>" + escapeHtml(String(val)) + unit + "</span></td>";
 			html += "<td>" + typeBadge + "</td>";
-			html += "<td><span class=\"mono\">" + escapeHtml(topic) + "</span> <button class=\"ui-btn ui-btn-inline ui-mini copy-btn\" onclick=\"copyTopic('" + escapeHtml(topic) + "')\">Kopieren</button></td>";
+			html += "<td><span class=\"mono\">" + escapeHtml(topic) + "</span> <button class=\"lb-btn lb-btn-sm\" style=\"margin-left: 6px; padding: 2px 8px; font-size: 80%;\" onclick=\"copyTopic('" + escapeHtml(topic) + "')\">Kopieren</button></td>";
 			html += "<td><small style='color:#64748b;'>" + ts + "</small></td>";
 			html += "</tr>";
 		}
