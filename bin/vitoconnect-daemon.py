@@ -287,7 +287,29 @@ class VitoconnectDaemon:
                 client_id=client_id,
             )
             self.quota.record_call()
-            self.devices = self.vicare.getDevices()
+            # Retrieve devices from PyViCare (devices attribute contains PyViCareDeviceConfig objects)
+            raw_devices = getattr(self.vicare, "devices", None)
+            if raw_devices is None and hasattr(self.vicare, "getDevices"):
+                raw_devices = self.vicare.getDevices()
+            if not raw_devices:
+                raw_devices = []
+
+            # Convert each PyViCareDeviceConfig to a typed device (e.g. HeatPump, GazBoiler) via asAutoDetectDevice()
+            self.devices = []
+            for d in raw_devices:
+                dev_model = getattr(d, "device_model", getattr(d, "getModel", lambda: "Unknown")())
+                dev_type = getattr(d, "device_type", getattr(d, "getDeviceType", lambda: "")())
+                if hasattr(d, "asAutoDetectDevice"):
+                    try:
+                        typed_dev = d.asAutoDetectDevice()
+                        self.devices.append(typed_dev)
+                        logger.info(f"Initialized device: {dev_model} ({dev_type}) -> {type(typed_dev).__name__}")
+                    except Exception as ex:
+                        logger.warning(f"Could not auto-detect typed device for {dev_model}: {ex}. Using raw device.")
+                        self.devices.append(d)
+                else:
+                    self.devices.append(d)
+
             logger.info(f"Connected to Viessmann API. Found {len(self.devices)} device(s).")
             return True
         except PyViCareRateLimitError:
@@ -409,7 +431,12 @@ class VitoconnectDaemon:
             logger.warning("No active device to handle command.")
             return
 
+        # Pick the device that has circuits or heating controls (fallback to first device)
         device = self.devices[0]
+        for d in self.devices:
+            if getattr(d, "circuits", None) or hasattr(d, "setDomesticHotWaterTargetTemperature"):
+                device = d
+                break
         try:
             parts = subtopic.split("/")
             
