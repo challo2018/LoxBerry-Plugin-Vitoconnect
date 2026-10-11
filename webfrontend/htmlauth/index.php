@@ -227,6 +227,17 @@ LBWeb::lbheader($template_title, $helplink, $helptemplate, true);
 		<div class="lb-form-help hint">Standard: <span class="mono">vitoconnect</span>. Der Miniserver abonniert <span class="mono">vitoconnect/#</span>. Befehle können an <span class="mono">vitoconnect/set/...</span> gesendet werden.</div>
 
 		<div class="lb-form-row" style="margin-top: 14px;">
+			<label class="lb-form-label" for="MQTT.include_device_topic">Multi-Device Topics (device_0, device_1)</label>
+			<div class="lb-form-field">
+				<label class="lb-toggle">
+					<input type="checkbox" name="MQTT.include_device_topic" id="MQTT.include_device_topic">
+					<span class="lb-toggle-slider"></span>
+				</label>
+			</div>
+		</div>
+		<div class="lb-form-help hint"><b>Aus (Standard / Abwärtskompatibel):</b> Hauptheizgerät wird direkt ohne <span class="mono">device_x/</span> unter dem Basis-Topic publiziert (kompatibel mit bestehenden Loxone Configs). <b>Ein:</b> Alle Geräte erhalten ihr eigenes Präfix <span class="mono">vitoconnect/device_0/...</span>.</div>
+
+		<div class="lb-form-row" style="margin-top: 14px;">
 			<label class="lb-form-label" for="MQTT.use_gateway">LoxBerry MQTT Gateway</label>
 			<div class="lb-form-field">
 				<label class="lb-toggle">
@@ -236,6 +247,7 @@ LBWeb::lbheader($template_title, $helplink, $helptemplate, true);
 			</div>
 		</div>
 		<div class="lb-form-help hint">Automatische Erkennung der Broker-Zugangsdaten aus LoxBerry (keine manuelle Eingabe nötig).</div>
+
 
 		<div class="mqtthosthidden" style="display:none; margin-top: 14px;">
 			<div class="lb-form-row">
@@ -347,6 +359,9 @@ function formFill() {
 
 		var ug = (typeof config.MQTT.use_gateway !== 'undefined') ? isTrue(config.MQTT.use_gateway) : true;
 		$("#MQTT\\.use_gateway").prop('checked', ug);
+
+		var idt = (typeof config.MQTT.include_device_topic !== 'undefined') ? isTrue(config.MQTT.include_device_topic) : false;
+		$("#MQTT\\.include_device_topic").prop('checked', idt);
 
 		if (config.MQTT.topic) $("#MQTT\\.topic").val(config.MQTT.topic);
 		if (config.MQTT.host) $("#MQTT\\.host").val(config.MQTT.host);

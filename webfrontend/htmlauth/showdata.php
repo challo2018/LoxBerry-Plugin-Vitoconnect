@@ -212,7 +212,7 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 <!-- ÜBERSICHT STEUERBARER BEFEHLE -->
 <div class="lb-card" style="margin-bottom: 20px;">
 	<h4>Übersicht steuerbarer Befehle (Schreiben)</h4>
-	<p style="font-size: 90%; color: #475569; margin: 0 0 10px 0;">Um diese Werte aus dem Loxone Miniserver zu ändern, sende eine Nachricht an das jeweilige <b>set-Topic</b>:</p>
+	<p style="font-size: 90%; color: #475569; margin: 0 0 10px 0;">Um diese Werte aus dem Loxone Miniserver zu ändern, sende eine Nachricht an das jeweilige <b>set-Topic</b>. Alle hier gelisteten Befehle wurden dynamisch von der Viessmann API für deine Anlage erkannt:</p>
 
 	<div class="table-responsive">
 		<table class="lb-table">
@@ -220,40 +220,10 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 				<tr>
 					<th>Befehl / MQTT Topic</th>
 					<th>Erlaubte Werte</th>
-					<th>Wirkung</th>
+					<th>Wirkung / Beschreibung</th>
 				</tr>
 			</thead>
-			<tbody>
-				<tr>
-					<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/normal_temperature</span></td>
-					<td>z. B. <span class="mono">20.5</span></td>
-					<td>Setzt die normale Raum-Solltemperatur (HK 0)</td>
-				</tr>
-				<tr>
-					<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/comfort_temperature</span></td>
-					<td>z. B. <span class="mono">22.0</span></td>
-					<td>Setzt die Komfort-Temperatur (HK 0)</td>
-				</tr>
-				<tr>
-					<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/reduced_temperature</span></td>
-					<td>z. B. <span class="mono">17.0</span></td>
-					<td>Setzt die reduzierte Absenktemperatur (HK 0)</td>
-				</tr>
-				<tr>
-					<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/mode</span></td>
-					<td><span class="mono">standby</span>, <span class="mono">dhw</span>, <span class="mono">dhwAndHeating</span></td>
-					<td>Wechselt die Betriebsart (HK 0)</td>
-				</tr>
-				<tr>
-					<td><span class="mono"><?=$mqtttopic;?>/set/dhw/target_temperature</span></td>
-					<td>z. B. <span class="mono">55.0</span></td>
-					<td>Setzt die Warmwasser-Solltemperatur</td>
-				</tr>
-				<tr>
-					<td><span class="mono"><?=$mqtttopic;?>/set/dhw/one_time_charge</span></td>
-					<td><span class="mono">start</span> (1) / <span class="mono">stop</span> (0)</td>
-					<td>Aktiviert oder stoppt die einmalige Warmwasserbereitung</td>
-				</tr>
+			<tbody id="commands-table-body">
 				<tr>
 					<td><span class="mono"><?=$mqtttopic;?>/poll</span></td>
 					<td><span class="mono">1</span></td>
@@ -263,6 +233,7 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 		</table>
 	</div>
 </div>
+
 
 </div><!-- /lb-content -->
 
@@ -350,7 +321,9 @@ function loadLiveValues() {
 		}
 
 		var html = "";
+		var writableList = [];
 		keys.sort();
+
 		for (var i = 0; i < keys.length; i++) {
 			var dp = data[keys[i]];
 			var topic = dp.topic || keys[i];
@@ -360,6 +333,10 @@ function loadLiveValues() {
 			var writable = dp.writable;
 			var typeBadge = writable ? "<span class='badge-write'>Lesen/Schreiben</span>" : "<span class='badge-read'>Nur Lesen</span>";
 			var ts = dp.timestamp ? (new Date(dp.timestamp)).toLocaleTimeString() : "-";
+
+			if (writable && dp.set_topic) {
+				writableList.push(dp);
+			}
 
 			html += "<tr class='dp-row' data-search='" + (desc + " " + topic).toLowerCase() + "'>";
 			html += "<td><b>" + escapeHtml(desc) + "</b></td>";
@@ -371,8 +348,71 @@ function loadLiveValues() {
 		}
 		tbody.html(html);
 		filterTable($("#datapoint-search").val().toLowerCase());
+
+		// Dynamisch Befehle-Dropdown & Tabelle aktualisieren
+		updateCommandsUI(writableList);
 	});
 }
+
+function updateCommandsUI(writableList) {
+	if (!writableList || writableList.length === 0) return;
+
+	var select = $("#test-target-select");
+	var currentSelected = select.val();
+	var selectHtml = "";
+
+	var cmdTable = $("#commands-table-body");
+	var cmdHtml = "";
+
+	// Standard Poll-Befehl immer an erster Stelle
+	cmdHtml += "<tr>";
+	cmdHtml += "<td><span class='mono'>" + escapeHtml("<?=$mqtttopic;?>/poll") + "</span> <button class='lb-btn lb-btn-sm' style='margin-left: 6px; padding: 2px 8px; font-size: 80%;' onclick=\"copyTopic('<?=$mqtttopic;?>/poll')\">Kopieren</button></td>";
+	cmdHtml += "<td><span class='mono'>1</span></td>";
+	cmdHtml += "<td>Löst einen sofortigen Abruf der Viessmann API aus</td>";
+	cmdHtml += "</tr>";
+
+	for (var i = 0; i < writableList.length; i++) {
+		var item = writableList[i];
+		var setTopic = item.set_topic;
+		var label = item.description || setTopic;
+		var allowed = item.allowed_values || "Zahl / Text";
+		var currVal = item.value !== undefined ? " (Aktuell: " + item.value + (item.unit ? " " + item.unit : "") + ")" : "";
+
+		selectHtml += "<option value='" + escapeHtml(setTopic) + "' data-allowed='" + escapeHtml(allowed) + "'>";
+		selectHtml += escapeHtml(label) + currVal + " &rarr; " + escapeHtml(setTopic);
+		selectHtml += "</option>";
+
+		cmdHtml += "<tr>";
+		cmdHtml += "<td><span class='mono'>" + escapeHtml(setTopic) + "</span> <button class='lb-btn lb-btn-sm' style='margin-left: 6px; padding: 2px 8px; font-size: 80%;' onclick=\"copyTopic('" + escapeHtml(setTopic) + "')\">Kopieren</button></td>";
+		cmdHtml += "<td><span class='mono' style='color:#0369a1;font-weight:600;'>" + escapeHtml(allowed) + "</span></td>";
+		cmdHtml += "<td><b>" + escapeHtml(label) + "</b></td>";
+		cmdHtml += "</tr>";
+	}
+
+	select.html(selectHtml);
+	if (currentSelected && select.find("option[value='" + currentSelected + "']").length > 0) {
+		select.val(currentSelected);
+	}
+	cmdTable.html(cmdHtml);
+
+	// Update placeholder of value input with allowed values
+	updateValuePlaceholder();
+}
+
+$(document).on("change", "#test-target-select", function() {
+	updateValuePlaceholder();
+});
+
+function updateValuePlaceholder() {
+	var opt = $("#test-target-select option:selected");
+	var allowed = opt.attr("data-allowed");
+	if (allowed) {
+		$("#test-target-val").attr("placeholder", "Erlaubt: " + allowed);
+	} else {
+		$("#test-target-val").attr("placeholder", "z. B. 21.5");
+	}
+}
+
 
 function filterTable(query) {
 	if (!query) {

@@ -714,7 +714,16 @@ class VitoconnectDaemon:
             live_datapoints = {}
             ts_now = datetime.now().isoformat()
 
-            def record(topic, val, unit="", desc="", writable=False, set_topic=None):
+            include_device_topic = False
+            mqtt_cfg = self.config.get("MQTT", {})
+            if isinstance(mqtt_cfg, dict):
+                idt_val = mqtt_cfg.get("include_device_topic", False)
+                if isinstance(idt_val, str):
+                    include_device_topic = idt_val.lower() in ["1", "true", "on", "yes"]
+                else:
+                    include_device_topic = bool(idt_val)
+
+            def record(topic, val, unit="", desc="", writable=False, set_topic=None, allowed_values=None, command_name=None):
                 if val is not None:
                     live_datapoints[topic] = {
                         "topic": topic,
@@ -723,14 +732,27 @@ class VitoconnectDaemon:
                         "description": desc,
                         "writable": writable,
                         "set_topic": set_topic,
+                        "allowed_values": allowed_values,
+                        "command_name": command_name,
                         "timestamp": ts_now,
                     }
                     self.publish(topic, val, force=is_heartbeat)
 
             for dev_idx, device in enumerate(self.devices):
-                dev_prefix = f"{self.base_topic}"
-                if len(self.devices) > 1:
-                    dev_prefix += f"/device_{dev_idx}"
+                dev_type = getattr(device, "_device_type", "").lower()
+                is_gateway = "gateway" in dev_type or "vitoconnect" in dev_type or type(device).__name__ == "Gateway"
+
+                if include_device_topic:
+                    dev_prefix = f"{self.base_topic}/device_{dev_idx}"
+                    set_prefix = f"{self.base_topic}/set/device_{dev_idx}"
+                else:
+                    if is_gateway:
+                        dev_prefix = f"{self.base_topic}/gateway"
+                        set_prefix = f"{self.base_topic}/set/gateway"
+                    else:
+                        dev_prefix = f"{self.base_topic}"
+                        set_prefix = f"{self.base_topic}/set"
+
 
                 # Device General Info
                 model = getattr(device, "_device_model", None)
@@ -853,10 +875,6 @@ class VitoconnectDaemon:
                     if inv_temp is not None:
                         record(f"{inv_prefix}/temperature", round(inv_temp, 2), "°C", f"Inverter {inv_idx}: Temperatur")
 
-                set_prefix = f"{self.base_topic}/set"
-                if len(self.devices) > 1:
-                    set_prefix += f"/device_{dev_idx}"
-
                 # Domestic Hot Water (DHW)
                 dhw_temp = self.safe_get(device, "getDomesticHotWaterStorageTemperature")
                 if dhw_temp is not None:
@@ -864,7 +882,17 @@ class VitoconnectDaemon:
 
                 dhw_target = self.safe_get(device, "getDomesticHotWaterTargetTemperature")
                 if dhw_target is not None:
-                    record(f"{dev_prefix}/dhw/target_temperature", round(dhw_target, 2), "°C", "Warmwasser-Sollwert", writable=True, set_topic=f"{set_prefix}/dhw/target_temperature")
+                    record(
+                        f"{dev_prefix}/dhw/target_temperature",
+                        round(dhw_target, 2),
+                        "°C",
+                        "Warmwasser-Sollwert",
+                        writable=True,
+                        set_topic=f"{set_prefix}/dhw/target_temperature",
+                        allowed_values="10 - 65 °C",
+                        command_name="setTargetTemperature",
+                    )
+
 
                 dhw_temp_top = self.safe_get(device, "getHotWaterStorageTemperatureTop")
                 if dhw_temp_top is not None:
@@ -892,7 +920,16 @@ class VitoconnectDaemon:
                 if dhw_charge is None:
                     dhw_charge = self.safe_get(device, "getOneTimeCharge")
                 if dhw_charge is not None:
-                    record(f"{dev_prefix}/dhw/one_time_charge", "1" if dhw_charge else "0", "", "Einmalige Warmwasserbereitung", writable=True, set_topic=f"{set_prefix}/dhw/one_time_charge")
+                    record(
+                        f"{dev_prefix}/dhw/one_time_charge",
+                        "1" if dhw_charge else "0",
+                        "",
+                        "Einmalige Warmwasserbereitung",
+                        writable=True,
+                        set_topic=f"{set_prefix}/dhw/one_time_charge",
+                        allowed_values="start / on / 1, stop / off / 0",
+                        command_name="activate / deactivate",
+                    )
 
                 dhw_charging = self.safe_get(device, "getDomesticHotWaterChargingActive")
                 if dhw_charging is not None:
@@ -948,7 +985,16 @@ class VitoconnectDaemon:
 
                     mode = self.safe_get(circuit, "getActiveMode")
                     if mode is not None:
-                        record(f"{c_prefix}/mode", mode, "", f"Heizkreis {c_idx}: Betriebsmodus", writable=True, set_topic=f"{c_set_prefix}/mode")
+                        record(
+                            f"{c_prefix}/mode",
+                            mode,
+                            "",
+                            f"Heizkreis {c_idx}: Betriebsmodus",
+                            writable=True,
+                            set_topic=f"{c_set_prefix}/mode",
+                            allowed_values="standby, dhw, dhwAndHeating, forcedReduced, forcedNormal",
+                            command_name="setMode",
+                        )
 
                     program = self.safe_get(circuit, "getActiveProgram")
                     if program is not None:
@@ -964,15 +1010,43 @@ class VitoconnectDaemon:
 
                     normal_t = self.safe_get(circuit, "getNormalTargetTemperature")
                     if normal_t is not None:
-                        record(f"{c_prefix}/normal_temperature", normal_t, "°C", f"Heizkreis {c_idx}: Normal-Sollwert", writable=True, set_topic=f"{c_set_prefix}/normal_temperature")
+                        record(
+                            f"{c_prefix}/normal_temperature",
+                            normal_t,
+                            "°C",
+                            f"Heizkreis {c_idx}: Normal-Sollwert",
+                            writable=True,
+                            set_topic=f"{c_set_prefix}/normal_temperature",
+                            allowed_values="10 - 30 °C",
+                            command_name="setTargetTemperature",
+                        )
 
                     comfort_t = self.safe_get(circuit, "getComfortTargetTemperature")
                     if comfort_t is not None:
-                        record(f"{c_prefix}/comfort_temperature", comfort_t, "°C", f"Heizkreis {c_idx}: Komfort-Sollwert", writable=True, set_topic=f"{c_set_prefix}/comfort_temperature")
+                        record(
+                            f"{c_prefix}/comfort_temperature",
+                            comfort_t,
+                            "°C",
+                            f"Heizkreis {c_idx}: Komfort-Sollwert",
+                            writable=True,
+                            set_topic=f"{c_set_prefix}/comfort_temperature",
+                            allowed_values="10 - 30 °C",
+                            command_name="setComfortTargetTemperature",
+                        )
 
                     reduced_t = self.safe_get(circuit, "getReducedTargetTemperature")
                     if reduced_t is not None:
-                        record(f"{c_prefix}/reduced_temperature", reduced_t, "°C", f"Heizkreis {c_idx}: Absenk-Sollwert", writable=True, set_topic=f"{c_set_prefix}/reduced_temperature")
+                        record(
+                            f"{c_prefix}/reduced_temperature",
+                            reduced_t,
+                            "°C",
+                            f"Heizkreis {c_idx}: Absenk-Sollwert",
+                            writable=True,
+                            set_topic=f"{c_set_prefix}/reduced_temperature",
+                            allowed_values="10 - 30 °C",
+                            command_name="setReducedTargetTemperature",
+                        )
+
 
                     slope = self.safe_get(circuit, "getHeatingCurveSlope")
                     if slope is not None:
@@ -1010,9 +1084,28 @@ class VitoconnectDaemon:
                             if not isinstance(f_props, dict):
                                 continue
                             
-                            # Check for writable commands
+                            # Check for writable commands and extract constraints/allowed values
                             commands = f_item.get("commands", {})
                             is_writable = bool(commands)
+                            allowed_val_info = None
+                            cmd_name = None
+
+                            if is_writable:
+                                for c_name, c_obj in commands.items():
+                                    cmd_name = c_name
+                                    params = c_obj.get("params", {}) if isinstance(c_obj, dict) else {}
+                                    for param_key, param_spec in params.items():
+                                        if isinstance(param_spec, dict):
+                                            constraints = param_spec.get("constraints", {})
+                                            if isinstance(constraints, dict):
+                                                if "enum" in constraints:
+                                                    allowed_val_info = ", ".join(str(e) for e in constraints["enum"])
+                                                elif "min" in constraints and "max" in constraints:
+                                                    step_str = f" (Schritt {constraints.get('stepping')})" if "stepping" in constraints else ""
+                                                    unit_str = f" {constraints.get('unit')}" if "unit" in constraints else ""
+                                                    allowed_val_info = f"{constraints['min']} - {constraints['max']}{unit_str}{step_str}"
+                                    if allowed_val_info:
+                                        break
                             
                             for p_key, p_val in f_props.items():
                                 if not isinstance(p_val, dict):
@@ -1040,9 +1133,19 @@ class VitoconnectDaemon:
                                     f_topic = f"{dev_prefix}/features/{feat_slug}/{prop_slug}"
                                     f_set = f"{set_prefix}/features/{feat_slug}" if is_writable else None
                                     
-                                    # Record with feature name as description
+                                    # Record with feature name as description and command constraints
                                     desc_label = f"{f_name}.{p_key}"
-                                    record(f_topic, val, unit=unit, desc=desc_label, writable=is_writable, set_topic=f_set)
+                                    record(
+                                        f_topic,
+                                        val,
+                                        unit=unit,
+                                        desc=desc_label,
+                                        writable=is_writable,
+                                        set_topic=f_set,
+                                        allowed_values=allowed_val_info,
+                                        command_name=cmd_name,
+                                    )
+
                     except Exception as ex:
                         logger.debug(f"Dynamic feature scanning skipped for {dev_prefix}: {ex}")
 
