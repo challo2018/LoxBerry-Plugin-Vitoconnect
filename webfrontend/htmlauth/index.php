@@ -18,173 +18,161 @@ LBWeb::lbheader($template_title, $helplink, $helptemplate);
 
 <style>
 .mono {
-	font-family:monospace;
-	font-size:110%;
-	font-weight:bold;
-	color:green;
-
+	font-family: monospace;
+	font-size: 105%;
+	font-weight: bold;
+	color: #007000;
 }
-#overlay 
-{
-  display: none !important;
+.card-box {
+	background: #fdfdfd;
+	border: 1px solid #d0d0d0;
+	border-radius: 6px;
+	padding: 15px;
+	margin-bottom: 20px;
+}
+.badge-ok {
+	background: #28a745;
+	color: white;
+	padding: 3px 8px;
+	border-radius: 4px;
+	font-size: 85%;
+	font-weight: bold;
+}
+.badge-warn {
+	background: #ffc107;
+	color: #212529;
+	padding: 3px 8px;
+	border-radius: 4px;
+	font-size: 85%;
+	font-weight: bold;
+}
+.badge-err {
+	background: #dc3545;
+	color: white;
+	padding: 3px 8px;
+	border-radius: 4px;
+	font-size: 85%;
+	font-weight: bold;
+}
+.stat-label {
+	font-weight: bold;
+	color: #555;
 }
 </style>
 
-<!-- Form SETTINGS -->
+<!-- STATUS & SERVICE CARD -->
+<div class="card-box">
+	<div class="wide">Dienst- und Bibliotheks-Status</div>
+	<div class="ui-grid-b" style="margin-top: 10px;">
+		<div class="ui-block-a">
+			<span class="stat-label">Hintergrunddienst:</span><br>
+			<span id="daemon-status-badge"><span class="badge-warn">Prüfe...</span></span>
+			<div style="margin-top: 8px;">
+				<button class="ui-btn ui-btn-inline ui-mini" id="btn-daemon-restart">Dienst neustarten</button>
+			</div>
+		</div>
+		<div class="ui-block-b">
+			<span class="stat-label">PyViCare Bibliothek:</span><br>
+			Installiert: <b id="pyvicare-curr">-</b><br>
+			PyPI Version: <b id="pyvicare-pypi">-</b>
+			<div style="margin-top: 8px;">
+				<button class="ui-btn ui-btn-inline ui-mini" id="btn-pyvicare-update">PyViCare aktualisieren</button>
+			</div>
+		</div>
+		<div class="ui-block-c">
+			<span class="stat-label">Viessmann API Quota:</span><br>
+			Aufrufe (24h): <b id="quota-calls">-</b> / 1.450<br>
+			Verbleibend: <b id="quota-remaining">-</b>
+			<p class="hint" style="margin-top: 5px;">Kostenloses Limit: max. 1.450 Calls / 24 Std.</p>
+		</div>
+	</div>
+	<div id="service-msg" style="margin-top: 10px; font-weight: bold;"></div>
+</div>
+
+<!-- FORM SETTINGS -->
 <form id="form" onsubmit="return false;">
 
-<!-- Viessmann Vitoconnect -->
-
-<div class="wide">Viessmann Vitoconnect</div>
-<p><i>This Plugin connects to Viessmann API to get data from your Viessmann Vitoconnect 100. This allows to fetch data for heating, solar and water.<br>Account at <a href="https://developer.viessmann.com/">Viessmann Developer Portal</a> is necessary.</i></p>
+<div class="wide">Viessmann Account & API</div>
+<p><i>Verbindet sich mit der Viessmann Developer API über die moderne <b>PyViCare</b> Bibliothek mit automatischem OAuth2 Token-Refresh.</i></p>
 
 <div data-role="fieldcontain">
-	<label for="user">Username</label>
+	<label for="user">E-Mail (Benutzername)</label>
 	<input name="user" id="user" type="text" />
-	<p class="hint">This is the username (E-Mail Adresse) of your <i>Viessmann Developer Portal</i> account.</p>
+	<p class="hint">Deine E-Mail-Adresse des <i>Viessmann Developer Portal</i> bzw. ViCare Accounts.</p>
 </div>
 
 <div data-role="fieldcontain">
-	<label for="pass">Password</label>
+	<label for="pass">Passwort</label>
 	<input name="pass" id="pass" type="password">
-	<p class="hint">This is the password of your <i>Viessmann Developer Portal</i> account.</p>
+	<p class="hint">Das Passwort deines Viessmann Accounts.</p>
 </div>
 
 <div data-role="fieldcontain">
-	<label for="apikey">Api-Key</label>
+	<label for="apikey">Client-ID (API-Key)</label>
 	<input name="apikey" id="apikey" type="text" />
-	<p class="hint">This is the Api-Key created with the <i>Viessmann Developer Portal</i></p>
+	<p class="hint">Die Client-ID aus dem <a href="https://developer.viessmann.com/" target="_blank">Viessmann Developer Portal</a>. (Redirect URI muss dort auf <span class="mono">http://localhost:4200/</span> oder Standard gesetzt sein).</p>
 </div>
 
-<div class="wide">Data transmission to Miniserver</div>
+<div class="wide">Abfrage & Steuerung</div>
 
-<fieldset data-role="controlgroup">
-	<input type="checkbox" name="Cron.enabled" id="Cron.enabled" class="refreshdisplay">
-	<label for="Cron.enabled">Enable Cron Job</label>
-	<p class="hint">If you enable this setting, you can define how often the data will be fetched automatically. If you disable the setting you have to trigger manually (see Query links and data) </p>
-</fieldset>
-
-<div data-role="fieldcontain" style="display:none" class="cronhidden">
-	<label for="Cron.interval">Interval</label>
+<div data-role="fieldcontain">
+	<label for="Cron.interval">Abfrage-Intervall</label>
 	<select name="Cron.interval" id="Cron.interval">
-		<option value="01min">1 minute</option>
-		<option value="03min">3 minutes</option>
-		<option value="05min">5 minutes</option>
-		<option value="10min">10 minutes</option>
-		<option value="15min">15 minutes</option>
-		<option value="30min">30 minutes</option>
-		<option value="hourly">60 minutes</option>
+		<option value="60">60 Sekunden (~1.440 Calls / Tag)</option>
+		<option value="120" selected>120 Sekunden (~720 Calls / Tag - Empfohlen)</option>
+		<option value="180">3 Minuten (~480 Calls / Tag)</option>
+		<option value="300">5 Minuten (~288 Calls / Tag)</option>
+		<option value="600">10 Minuten (~144 Calls / Tag)</option>
+		<option value="900">15 Minuten (~96 Calls / Tag)</option>
 	</select>
-	<p class="hint">Select the time interval how often data from Viessmann is automatically refreshed</span>.</p>
+	<p class="hint">Bestimmt, wie oft neue Werte von Viessmann abgerufen werden. <b>Empfehlung:</b> Mindestens 60-120 Sek., um das API-Tageslimit nicht zu überschreiten.</p>
 </div>
 
-<p><i>Please activate just one transmission protocol.</i></p>
-
-<!-- MQTT --> 
+<div class="wide">MQTT Datenübertragung & Bidirektionale Steuerung</div>
 
 <fieldset data-role="controlgroup">
-	<input type="checkbox" name="MQTT.enabled" id="MQTT.enabled" class="refreshdisplay">
-	<label for="MQTT.enabled">Enable to use MQTT for data transfer</label>
-	<p class="hint">If you locally have the MQTT Gateway plugin installed, leave Broker host and credentials empty. The Vitoconnect plugin then automatically collects your settings from the MQTT Gateway plugin (not shown in this form). </p>
+	<input type="checkbox" name="MQTT.enabled" id="MQTT.enabled" class="refreshdisplay" checked>
+	<label for="MQTT.enabled">MQTT aktivieren (Empfohlen)</label>
+	<p class="hint">Überträgt Werte bei Änderung (Change-Detection) an den MQTT Broker und erlaubt Steuerung via MQTT.</p>
 </fieldset>
 
-<div data-role="fieldcontain" style="display:none" class="mqtthidden">
-	<label for="MQTT.topic">Base topic</label>
-	<input name="MQTT.topic" id="MQTT.topic" type="text">
-	<p class="hint">This is the base topic, the plugin publishes it's data to. Subscribe for <span class="mono">basetopic/#</span>. Default (if empty) is <span class="mono">vitoconnect</span>.</p>
+<div data-role="fieldcontain" class="mqtthidden">
+	<label for="MQTT.topic">Basis-Topic</label>
+	<input name="MQTT.topic" id="MQTT.topic" type="text" value="vitoconnect">
+	<p class="hint">Standard: <span class="mono">vitoconnect</span>. Der Miniserver abonniert <span class="mono">vitoconnect/#</span>. Befehle können an <span class="mono">vitoconnect/set/...</span> gesendet werden.</p>
 </div>
 
-<div data-role="fieldcontain" style="display:none" class="mqtthidden">
-	<label for="MQTT.host">Broker Hostname:Port</label>
-	<input name="MQTT.host" id="MQTT.host" type="text">
-	<p class="hint">Example: mybroker:1883. Leave this empty, if your settings from the MQTT Gateway plugin should be used.</p>
+<fieldset data-role="controlgroup" class="mqtthidden">
+	<input type="checkbox" name="MQTT.use_gateway" id="MQTT.use_gateway" class="refreshdisplay" checked>
+	<label for="MQTT.use_gateway">LoxBerry MQTT Gateway Einstellungen automatisch nutzen</label>
+	<p class="hint">Wenn aktiv, werden Broker-Host, Port und Zugangsdaten direkt aus dem LoxBerry MQTT Gateway übernommen.</p>
+</fieldset>
+
+<div data-role="fieldcontain" style="display:none" class="mqtthosthidden">
+	<label for="MQTT.host">Eigener Broker Host:Port</label>
+	<input name="MQTT.host" id="MQTT.host" type="text" placeholder="127.0.0.1:1883">
+	<p class="hint">Nur angeben, wenn ein externer Broker verwendet werden soll.</p>
 </div>
 
-<div data-role="fieldcontain" style="display:none" class="mqtthidden">
-	<label for="MQTT.user">Broker Username</label>
+<div data-role="fieldcontain" style="display:none" class="mqtthosthidden">
+	<label for="MQTT.user">Broker Benutzer</label>
 	<input name="MQTT.user" id="MQTT.user" type="text">
-	<p class="hint">This is the username of your <i>MQTT broker</i>. Leave this empty, if your settings from the MQTT Gateway plugin should be used, or you have enabled anonymous access.</p>
 </div>
 
-<div data-role="fieldcontain" style="display:none" class="mqtthidden">
-	<label for="MQTT.pass">Broker Password</label>
+<div data-role="fieldcontain" style="display:none" class="mqtthosthidden">
+	<label for="MQTT.pass">Broker Passwort</label>
 	<input name="MQTT.pass" id="MQTT.pass" type="password">
-	<p class="hint">This is the password of your <i>MQTT broker</i>. Leave this empty, if your settings from the MQTT Gateway plugin should be used, or you have enabled anonymous access.</p>
 </div>
-
-
-<!-- Loxone HTTP --> 
-
-<fieldset data-role="controlgroup">
-	<input type="checkbox" name="Loxone.enabled" id="Loxone.enabled" class="refreshdisplay">
-	<label for="Loxone.enabled">Enable to use HTTP transfer to Miniserver VI's/VTI's</label>
-	<p class="hint">This option enables direct pushes to virtual inputs on the Miniserver. VIs need to be named exactly as shown on the <i>Query links and data</i> tab.</p>
-</fieldset>
-
-<div class="ui-grid-b loxonehidden" style="display:none;" >
-	<div class="ui-block-a" style="line-height: 92px;">
-		Miniserver to send
-	</div>
-	<div class="ui-block-b">
-
-<?php
-
-echo LBWeb::mslist_select_html( [ FORMID => 'Loxone.msnr', DATA_MINI => '0' ] );
-
-?>
-	</div>
-	<div class="ui-block-b">
-	</div>
-</div>
-
-<style>
-/* Custom indentations are needed because the length of custom labels differs from
-   the length of the standard labels */
-.custom-size-flipswitch.ui-flipswitch .ui-btn.ui-flipswitch-on {
-    text-indent: -5.9em;
-}
-.custom-size-flipswitch.ui-flipswitch .ui-flipswitch-off {
-    text-indent: 0.5em;
-}
-/* Custom widths are needed because the length of custom labels differs from
-   the length of the standard labels */
-.custom-size-flipswitch.ui-flipswitch {
-    width: 8.875em;
-}
-.custom-size-flipswitch.ui-flipswitch.ui-flipswitch-active {
-    padding-left: 7em;
-    width: 1.875em;
-}
-@media (min-width: 28em) {
-    /*Repeated from rule .ui-flipswitch above*/
-    .ui-field-contain > label + .custom-size-flipswitch.ui-flipswitch {
-        width: 1.875em;
-    }
-}
-</style>
-
-<div class="ui-grid-b loxonehidden" style="display:none">
-	<div class="ui-block-a">
-		<label for="Loxone.cachedisabled">Use LoxBerry's cache</label>
-	</div>
-	<div class="ui-block-b">
-		<input type="checkbox" name="Loxone.cachedisabled" id="Loxone.cachedisabled" data-role="flipswitch" data-off-text="Cache" data-on-text="No Cache" data-wrapper-class="custom-size-flipswitch">
-	</div>
-	<div class="ui-block-c">
-		<p class="hint">This setting by default should stay on <b>Cache</b>. LoxBerry's cache prevents re-transmitting the same data multiple times (to reduce Miniserver load). During setup of your VI's/VTI's you may temporarily switch to <b>No Cache</b> to check your configuration.</p>
-	</div>
-</div>
-
 
 </form>
-<!-- End of form -->
+
 <hr>
 
-<div style="display:flex;align-items:center;justify-content:center;height:16px;min-height:16px">
+<div style="display:flex;align-items:center;justify-content:center;height:24px;min-height:24px">
 	<span id="savemessages"></span>
 </div>
 <div style="display:flex;align-items:center;justify-content:center;">
-	<button class="ui-btn ui-btn-icon-right" id="saveapply" data-inline="true">Save and Apply</button>
+	<button class="ui-btn ui-btn-icon-right ui-btn-b" id="saveapply" data-inline="true">Einstellungen speichern & anwenden</button>
 </div>
 
 <div id="jsonconfig" style="display:none">
@@ -203,95 +191,144 @@ LBWeb::lbfooter();
 ?>
 
 <script>
+var config = {};
 
-var config;
-
-$( document ).ready(function() {
-
-	config = JSON.parse( $("#jsonconfig").text() );
+$(document).ready(function() {
+	try {
+		config = JSON.parse($("#jsonconfig").text());
+	} catch(e) {
+		config = {};
+	}
 	formFill();
 	viewhide();
-	
-	
+	checkPyViCareStatus();
+	checkStats();
+
 	$(".refreshdisplay").click(function(){ viewhide(); });
 	$("#saveapply").click(function(){ saveapply(); });
-	$("#saveapply").blur(function(){ 
-		$("#savemessages").html("");
-	});
-	
-
+	$("#btn-daemon-restart").click(function(){ restartDaemon(); });
+	$("#btn-pyvicare-update").click(function(){ updatePyViCare(); });
 });
 
-
-function viewhide()
-{
-	if( $("#MQTT\\.enabled").is(":checked") ) {
+function viewhide() {
+	if ($("#MQTT\\.enabled").is(":checked")) {
 		$(".mqtthidden").fadeIn();
+		if ($("#MQTT\\.use_gateway").is(":checked")) {
+			$(".mqtthosthidden").fadeOut();
+		} else {
+			$(".mqtthosthidden").fadeIn();
+		}
 	} else {
 		$(".mqtthidden").fadeOut();
-	}
-	
-	if( $("#Loxone\\.enabled").is(":checked") ) {
-		$(".loxonehidden").fadeIn();
-	} else {
-		$(".loxonehidden").fadeOut();
-	}
-	
-	if( $("#Cron\\.enabled").is(":checked") ) {
-		$(".cronhidden").fadeIn();
-	} else {
-		$(".cronhidden").fadeOut();
+		$(".mqtthosthidden").fadeOut();
 	}
 }
 
-function formFill()
-{
-	if (typeof user !== 'undefined') $("#user").val( config.user );
-	if (typeof pass !== 'undefined') $("#pass").val( config.pass );
-	if (typeof apikey !== 'undefined') $("#apikey").val( config.apikey );
-	
-		if( typeof config.Cron !== 'undefined') {
-		if (typeof config.Cron.enabled !== 'undefined') $("#Cron\\.enabled").prop('checked', config.Cron.enabled).checkboxradio('refresh');
-		if (typeof config.Cron.interval !== 'undefined') $("#Cron\\.interval").val( config.Cron.interval).selectmenu("refresh", true);
+function formFill() {
+	if (config.user) $("#user").val(config.user);
+	if (config.pass) $("#pass").val(config.pass);
+	if (config.apikey) $("#apikey").val(config.apikey);
+
+	if (config.Cron && config.Cron.interval) {
+		$("#Cron\\.interval").val(config.Cron.interval).selectmenu("refresh", true);
 	}
-	
-	if( typeof config.MQTT !== 'undefined') {
-		if (typeof config.MQTT.enabled !== 'undefined') $("#MQTT\\.enabled").prop('checked', config.MQTT.enabled).checkboxradio('refresh');
-		if (typeof config.MQTT.topic !== 'undefined') $("#MQTT\\.topic").val( config.MQTT.topic );
-		if (typeof config.MQTT.host !== 'undefined') $("#MQTT\\.host").val( config.MQTT.host );
-		if (typeof config.MQTT.user !== 'undefined') $("#MQTT\\.user").val( config.MQTT.user );
-		if (typeof config.MQTT.pass !== 'undefined') $("#MQTT\\.pass").val( config.MQTT.pass );		
-	}
-	
-	if( typeof config.Loxone !== 'undefined') {
-		if (typeof config.Loxone.enabled !== 'undefined') $("#Loxone\\.enabled").prop('checked', config.Loxone.enabled).checkboxradio('refresh');
-		if (typeof config.Loxone.msnr !== 'undefined') $("#Loxone\\.msnr").val( config.Loxone.msnr ).selectmenu("refresh", true);
-		if (typeof config.Loxone.cachedisabled !== 'undefined') $("#Loxone\\.cachedisabled").prop('checked', config.Loxone.cachedisabled).flipswitch('refresh');
+
+	if (config.MQTT) {
+		if (typeof config.MQTT.enabled !== 'undefined') {
+			var en = (config.MQTT.enabled === true || config.MQTT.enabled === "true" || config.MQTT.enabled === "1");
+			$("#MQTT\\.enabled").prop('checked', en).checkboxradio('refresh');
+		}
+		if (typeof config.MQTT.use_gateway !== 'undefined') {
+			var ug = (config.MQTT.use_gateway === true || config.MQTT.use_gateway === "true" || config.MQTT.use_gateway === "1");
+			$("#MQTT\\.use_gateway").prop('checked', ug).checkboxradio('refresh');
+		}
+		if (config.MQTT.topic) $("#MQTT\\.topic").val(config.MQTT.topic);
+		if (config.MQTT.host) $("#MQTT\\.host").val(config.MQTT.host);
+		if (config.MQTT.user) $("#MQTT\\.user").val(config.MQTT.user);
+		if (config.MQTT.pass) $("#MQTT\\.pass").val(config.MQTT.pass);
 	}
 }
 
-function saveapply() 
-{
-	$("#savemessages").html("Submitting...");
-	$("#savemessages").css("color", "grey");
-	
-	$.post( "ajax-handler.php?action=saveconfig", $( "#form" ).serialize() )
-	.done(function( data ) {
-		console.log("Done:", data);
-		$("#savemessages").html("Saved successfully");
-		$("#savemessages").css("color", "green");
-		
-		config = data;
-		formFill();
+function checkPyViCareStatus() {
+	$.getJSON("ajax-handler.php?action=pyvicare_status")
+	.done(function(data) {
+		$("#pyvicare-curr").text(data.installed_version || "Nicht installiert");
+		$("#pyvicare-pypi").text(data.latest_pypi_version || "Unbekannt");
+
+		if (data.daemon_running) {
+			$("#daemon-status-badge").html('<span class="badge-ok">Aktiv & Läuft</span>');
+		} else {
+			$("#daemon-status-badge").html('<span class="badge-err">Gestoppt</span>');
+		}
+
+		if (data.update_available) {
+			$("#btn-pyvicare-update").addClass("ui-btn-b").text("Update verfügbar: " + data.latest_pypi_version);
+		} else {
+			$("#btn-pyvicare-update").text("PyViCare ist aktuell");
+		}
 	})
-	.fail(function( error, textStatus, errorThrown ) {
-		console.log("Fail:", error, textStatus, errorThrown);
-		$("#savemessages").html("Error "+error.status+": "+error.responseJSON.error);
-		$("#savemessages").css("color", "red");
-		
+	.fail(function() {
+		$("#pyvicare-curr").text("Statusfehler");
 	});
 }
 
+function checkStats() {
+	$.getJSON("ajax-handler.php?action=get_stats")
+	.done(function(data) {
+		if (data.calls_24h !== undefined) {
+			$("#quota-calls").text(data.calls_24h);
+			$("#quota-remaining").text(data.remaining_24h);
+		}
+	});
+}
 
+function restartDaemon() {
+	$("#service-msg").css("color", "blue").text("Starte Dienst neu...");
+	$.getJSON("ajax-handler.php?action=daemon_control&cmd=restart")
+	.done(function(res) {
+		$("#service-msg").css("color", "green").text("Dienst neugestartet.");
+		setTimeout(checkPyViCareStatus, 2000);
+	})
+	.fail(function() {
+		$("#service-msg").css("color", "red").text("Fehler beim Neustart des Dienstes.");
+	});
+}
 
+function updatePyViCare() {
+	$("#service-msg").css("color", "blue").text("Aktualisiere PyViCare im Hintergrund (pip install --upgrade)... Bitte warten.");
+	$("#btn-pyvicare-update").addClass("ui-disabled");
+
+	$.getJSON("ajax-handler.php?action=pyvicare_upgrade")
+	.done(function(res) {
+		if (res.success) {
+			$("#service-msg").css("color", "green").text("PyViCare erfolgreich auf Version " + res.version + " aktualisiert!");
+		} else {
+			$("#service-msg").css("color", "red").text("Upgrade fehlgeschlagen: " + (res.error || "Unbekannter Fehler"));
+		}
+		$("#btn-pyvicare-update").removeClass("ui-disabled");
+		checkPyViCareStatus();
+	})
+	.fail(function() {
+		$("#service-msg").css("color", "red").text("Netzwerkfehler beim Aktualisieren.");
+		$("#btn-pyvicare-update").removeClass("ui-disabled");
+	});
+}
+
+function saveapply() {
+	$("#savemessages").html("Speichere Konfiguration...");
+	$("#savemessages").css("color", "grey");
+
+	$.post("ajax-handler.php?action=saveconfig", $("#form").serialize())
+	.done(function(data) {
+		$("#savemessages").html("Erfolgreich gespeichert & Dienst neugestartet!");
+		$("#savemessages").css("color", "green");
+		config = data;
+		formFill();
+		setTimeout(checkPyViCareStatus, 2000);
+	})
+	.fail(function(error) {
+		$("#savemessages").html("Fehler beim Speichern: " + (error.responseJSON ? error.responseJSON.error : "Serverfehler"));
+		$("#savemessages").css("color", "red");
+	});
+}
 </script>

@@ -7,7 +7,6 @@ $navbar[1]['active'] = null;
 $navbar[2]['active'] = True;
 $navbar[3]['active'] = null;
 
-
 $L = LBSystem::readlanguage("language.ini");
 $template_title = "Viessmann Vitoconnect Gateway";
 $helplink = "https://wiki.loxberry.de/plugins/vitoconnect/start";
@@ -15,278 +14,196 @@ $helptemplate = "help.html";
 
 LBWeb::lbheader($template_title, $helplink, $helptemplate);
 
-
-// Load Config
-
-if( ! file_exists(CONFIGFILE) ) {
-	echo "<p>You first need to save the configuration.</p>";
+if (!file_exists(CONFIGFILE)) {
+	echo "<p>Bitte zuerst die Einstellungen konfigurieren und speichern.</p>";
 	LBWeb::lbfooter();
 	exit();
-} else {
-	$configdata = file_get_contents(CONFIGFILE);
-	$config = json_decode($configdata);
-	if( empty($config) ) {
-		echo "<p>You first need to save the configuration.</p>";
-		LBWeb::lbfooter();
-		exit(1);
-	}
 }
 
-// Init variables
-$lbzeurl ="http://<lbuser>:<lbpass>@".lbhostname().":".lbwebserverport()."/admin/plugins/".LBPPLUGINDIR."/vitoconnect.php";
+$configdata = file_get_contents(CONFIGFILE);
+$config = json_decode($configdata);
 $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect";
 
 ?>
 
 <style>
 .mono {
-	font-family:monospace;
-	font-size:110%;
-	font-weight:bold;
-	color:green;
-
-}
-
-table {
-border-collapse: collapse;	
-}
-
-table, th, td {
-  border: 1px solid grey;
-  padding: 5px;
-  text-align: left;
-}
-
-#overlay 
-{
-  display: none !important;
-}
-
-
-.table {
-  width: 90%;
-  margin: auto;
-  table-layout: fixed;
-  display: table;
-  border-collapse: collapse;
-  border: 1px solid grey;
-  padding: 5px;
-}
-
-.table_row {
-  display: table-row;
-  border: 1px solid grey;
-  padding: 5px;
-
-}
-
-.table_head {
-	color: white;
-	background-color: #6dac20;
+	font-family: monospace;
+	font-size: 105%;
 	font-weight: bold;
-	text-shadow: 1px 1px 2px black;
+	color: #007000;
 }
-
-.table_head_value {
-	width:40%;
+.topic-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: 10px;
 }
-
-.table_col {
-  display: table-cell;
-  border: 1px solid grey;
-  padding: 5px;
+.topic-table th, .topic-table td {
+	border: 1px solid #d0d0d0;
+	padding: 8px 12px;
+	text-align: left;
 }
-
+.topic-table th {
+	background-color: #6dac20;
+	color: white;
+}
+.card-box {
+	background: #fdfdfd;
+	border: 1px solid #d0d0d0;
+	border-radius: 6px;
+	padding: 15px;
+	margin-bottom: 20px;
+}
 </style>
 
-<div class="wide">Query links and data</div>
-<p>In the following link, the combination <span class="mono">&lt;lbuser&gt;:&lt;lbpass&gt; </span>needs to be replaced with your <b>LoxBerry's</b> username and password.</p>
-<div style="display:flex; align-items: center; justify-content: center;">
-	<div style="flex: 0 0 95%;padding:5px" data-role="fieldcontain">
-		<label for="summarylink">Link to trigger manually data from Viessmann</label>
-		<input type="text" id="summarylink" name="summarylink" data-mini="true" value="<?=$lbzeurl."?action=summary";?>" readonly>
+<div class="card-box">
+	<div class="wide">Live-Status & API-Zähler</div>
+	<div id="live-stats-box" style="margin-top: 10px;">
+		Lade aktuellen Status...
 	</div>
 </div>
-<hr>
 
-<div id="content">
-</div>
-	
-<hr>
+<div class="wide">MQTT Topics & Loxone Einbindung</div>
+<p>
+	Das Plugin sendet alle Werte strukturiert über MQTT. Im Loxone Miniserver können diese über das <b>LoxBerry MQTT Gateway</b> (oder direkt über Loxone MQTT) als <i>Virtuelle Eingänge</i> empfangen werden.
+</p>
+
+<h3>1. Wichtigste Sensor- und Status-Topics (Lesen)</h3>
+<table class="topic-table">
+	<thead>
+		<tr>
+			<th>MQTT Topic</th>
+			<th>Beschreibung</th>
+			<th>Beispielwert</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/temperature/outside</span></td>
+			<td>Außentemperatur (°C)</td>
+			<td>12.4</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/temperature/boiler</span></td>
+			<td>Kessel- / Vorlauftemperatur (°C)</td>
+			<td>45.0</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/dhw/temperature</span></td>
+			<td>Warmwassertemperatur (°C)</td>
+			<td>52.5</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/dhw/target_temperature</span></td>
+			<td>Warmwasser-Solltemperatur (°C)</td>
+			<td>55.0</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/dhw/one_time_charge</span></td>
+			<td>Einmalige Warmwasserbereitung aktiv</td>
+			<td>0 oder 1</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/burner/active</span></td>
+			<td>Brenner aktiv</td>
+			<td>0 oder 1</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/burner/hours</span></td>
+			<td>Brenner-Betriebsstunden (h)</td>
+			<td>3450</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/circuit_0/normal_temperature</span></td>
+			<td>Heizkreis 0: Normal-Solltemperatur (°C)</td>
+			<td>21.0</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/circuit_0/mode</span></td>
+			<td>Heizkreis 0: Betriebsmodus</td>
+			<td>dhwAndHeating, standby, dhw</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/errors/count</span></td>
+			<td>Anzahl aktiver Fehlermeldungen</td>
+			<td>0</td>
+		</tr>
+	</tbody>
+</table>
+
+<h3 style="margin-top: 25px;">2. Steuerbefehle an Viessmann senden (Schreiben)</h3>
+<p>
+	Um Werte von Loxone an Viessmann zu übergeben, sende eine MQTT-Nachricht an das entsprechende <b>set-Topic</b> (z. B. über das MQTT Gateway oder einen Virtuellen Ausgangsbefehl):
+</p>
+<table class="topic-table">
+	<thead>
+		<tr>
+			<th>Befehl / MQTT Topic</th>
+			<th>Erlaubte Werte</th>
+			<th>Beschreibung</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/normal_temperature</span></td>
+			<td>Temperatur (z. B. <span class="mono">21.5</span>)</td>
+			<td>Setzt die normale Raum-Solltemperatur für Heizkreis 0</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/comfort_temperature</span></td>
+			<td>Temperatur (z. B. <span class="mono">23.0</span>)</td>
+			<td>Setzt die Komfort-Temperatur für Heizkreis 0</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/reduced_temperature</span></td>
+			<td>Temperatur (z. B. <span class="mono">17.0</span>)</td>
+			<td>Setzt die reduzierte Temperatur (Absenkung) für Heizkreis 0</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/set/circuit_0/mode</span></td>
+			<td><span class="mono">standby</span>, <span class="mono">dhw</span>, <span class="mono">dhwAndHeating</span></td>
+			<td>Ändert die Betriebsart von Heizkreis 0</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/set/dhw/target_temperature</span></td>
+			<td>Temperatur (z. B. <span class="mono">55.0</span>)</td>
+			<td>Setzt die Warmwasser-Solltemperatur</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/set/dhw/one_time_charge</span></td>
+			<td><span class="mono">start</span> (oder <span class="mono">1</span>) / <span class="mono">stop</span> (oder <span class="mono">0</span>)</td>
+			<td>Startet oder stoppt die einmalige Warmwasseraufheizung</td>
+		</tr>
+		<tr>
+			<td><span class="mono"><?=$mqtttopic;?>/poll</span></td>
+			<td>beliebig (z. B. <span class="mono">1</span>)</td>
+			<td>Löst sofort eine manuelle Abfrage bei Viessmann aus</td>
+		</tr>
+	</tbody>
+</table>
 
 <?php
 LBWeb::lbfooter();
 ?>
 
 <script>
-
-lbzeurl = '<?=$lbzeurl;?>';
-mqtttopic = '<?=$mqtttopic;?>';
-
-$( document ).ready(function() {
-
-querySummary();
-
-/*	$("#saveapply").click(function(){ saveapply(); });
-	$("#saveapply").blur(function(){ 
-		$("#savemessages").html("");
-	});
-*/
-
-	$(".copytoclipboard").on("click", function(){ 
-		var idToCopy = $(this).data("idtocopy");
-		console.log( "Element to copy:", idToCopy );
-		if( idToCopy != undefined ) {
-			//copyToClipboard( $("#idToCopy") )
-			copyToClipboard( idToCopy )
-		}
-	});
-
-
-
+$(document).ready(function() {
+	loadLiveStats();
 });
 
-function querySummary() 
-{
-	$("#content").html("<i>Querying data...This may take 10 or 20 seconds...</i>");
-	$("#content").css("color", "grey");
-	
-	$.get( "ajax-handler.php?action=getsummary" )
-	.done(function( data ) {
-		$("#content").html("<i>Data received...</i>");
-		$("#content").css("color", "green");
-		console.log("Done:", data);
-		showInstallation( data );
+function loadLiveStats() {
+	$.getJSON("ajax-handler.php?action=get_stats")
+	.done(function(data) {
+		var statusText = data.is_running ? "<span style='color:green;font-weight:bold;'>Online & Aktiv</span>" : "<span style='color:red;font-weight:bold;'>Gestoppt</span>";
+		var html = "<p><b>Dienststatus:</b> " + statusText + "<br>" +
+				   "<b>Letzte Aktualisierung:</b> " + (data.timestamp || "-") + "<br>" +
+				   "<b>Erkannte Geräte:</b> " + (data.devices_count !== undefined ? data.devices_count : "-") + "<br>" +
+				   "<b>API-Aufrufe (24h):</b> " + (data.calls_24h !== undefined ? data.calls_24h : "-") + " / 1.450 " +
+				   "(Verbleibend: <b>" + (data.remaining_24h !== undefined ? data.remaining_24h : "-") + "</b>)</p>";
+		$("#live-stats-box").html(html);
 	})
-	.fail(function( error, textStatus, errorThrown ) {
-		console.log("Fail:", error, textStatus, errorThrown);
-		if( typeof error.responseJSON !== 'undefined' ) 
-			$("#content").html("Error "+error.status+": "+error.responseJSON.error);
-		else
-			$("#content").html("Error "+error.status+": "+error.statusText);
-		$("#content").css("color", "red");
-		
+	.fail(function() {
+		$("#live-stats-box").html("<p style='color:grey;'>Keine Live-Statistikdaten verfügbar. Prüfe, ob der Dienst gestartet wurde.</p>");
 	});
 }
-
-function saveapply() 
-{
-	$("#savemessages").html("Submitting...");
-	$("#savemessages").css("color", "grey");
-	
-	$.post( "ajax-handler.php?action=saveconfig", $( "#form" ).serialize() )
-	.done(function( data ) {
-		console.log("Done:", data);
-		$("#savemessages").html("Saved successfully");
-		$("#savemessages").css("color", "green");
-		
-		config = data;
-		formFill();
-	})
-	.fail(function( error, textStatus, errorThrown ) {
-		console.log("Fail:", error, textStatus, errorThrown);
-		$("#savemessages").html("Error "+error.status+": "+error.responseJSON.error);
-		$("#savemessages").css("color", "red");
-		
-	});
-}
-
-function showInstallation ( data ) 
-{
-	$("#content").html("Installation gefunden...");
-	$("#content").css("color", "black");
-	
-	
-	
-	$Installation = get(data.general, 'id');
-	if ( $Installation ) {
-			vdivid = 'Installationsdaten';
-			$("#content").append('<div id="'+vdivid+'"></div>');
-			vdiv=$("#"+vdivid);
-			vdiv.append("<h2>Installationsdaten Allgemein:</h2>");
-				
-				
-				
-			strHtml = '\
-				<div class="table" role="table" id="InstallGeneral" aria-label="Data">\
-					<div class="table_row">\
-						<div class="table_col table_head">Eigenschaft</div>\
-						<div class="table_col table_head table_head_value">Daten</div>\
-					</div>\
-				</div>\
-			';
-			vdiv.append(strHtml);
-			
-
-			strHtml = "";	
-	
-			$.each ( data.general, function( prop, val ) { 
-			
-				strHtml+= '\
-					<div class="table_row">\
-						<div class="table_col ">'+prop+'</div>\
-						<div class="table_col ">'+val+'</div>\
-					</div>\
-				';		
-			});
-			
-		
-			$('#InstallGeneral').append(strHtml);
-			
-				
-			vdiv.append("<h2>Installationsdaten Details:</h2>");
-				
-				
-				
-			strHtml = '\
-				<div class="table" role="table" id="InstallDetails" aria-label="Data">\
-					<div class="table_row">\
-						<div class="table_col table_head">Eigenschaft</div>\
-						<div class="table_col table_head table_head_value">Daten</div>\
-					</div>\
-				</div>\
-			';
-			vdiv.append(strHtml);
-			
-
-			strHtml = "";	
-	
-			$.each ( data.detail, function( prop, val ) { 
-			
-				strHtml+= '\
-					<div class="table_row">\
-						<div class="table_col ">'+prop+'</div>\
-						<div class="table_col ">'+val+'</div>\
-					</div>\
-				';		
-			});
-			
-		
-			$('#InstallDetails').append(strHtml);	
-				//queryBattery(vehicle.VIN);
-		
-		
-	} else {
-		$("#content").append("Sorry, no Viessmann Installation found :-(");
-	}	
-}
-
-// Returns a deep property or object, without checking everything
-get = function(obj, key) {
-    return key.split(".").reduce(function(o, x) {
-        return (typeof o == "undefined" || o === null) ? o : o[x];
-    }, obj);
-}
-
-// Copies data to clipboard
-function copyToClipboard( element ) {
-    $("#"+element).select();
-	document.execCommand("copy");
-}
-
 </script>
-
-
-
-
-

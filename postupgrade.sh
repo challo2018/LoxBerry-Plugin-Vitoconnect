@@ -1,41 +1,57 @@
 #!/bin/sh
+# postupgrade.sh - Vitoconnect Plugin
 
-# To use important variables from command line use the following code:
-ARGV0=$0 # Zero argument is shell command
-# echo "<INFO> Command is: $ARGV0"
+ARGV0=$0
+ARGV1=$1 # temp folder
+ARGV2=$2 # Plugin short name (NAME)
+ARGV3=$3 # Plugin installation folder (FOLDER)
+ARGV4=$4 # Plugin version
+ARGV5=$5 # Base folder of LoxBerry
 
-ARGV1=$1 # First argument is temp folder during install
-# echo "<INFO> Temporary folder is: $ARGV1"
+if [ -f /etc/environment ]; then
+    . /etc/environment
+fi
 
-ARGV2=$2 # Second argument is Plugin-Name for scipts etc.
-# echo "<INFO> (Short) Name is: $ARGV2"
+LBHOMEDIR=${LBHOMEDIR:-$ARGV5}
+PDIR=$ARGV3
+PDATA=${LBPDATA}/$PDIR
+PBIN=${LBPBIN}/$PDIR
+PDAEMON=${LBPDAEMON}/$PDIR
 
-ARGV3=$3 # Third argument is Plugin installation folder
-# echo "<INFO> Installation folder is: $ARGV3"
+echo "<INFO> Vitoconnect postupgrade: Version $ARGV4"
 
-ARGV4=$4 # Forth argument is Plugin version
-# echo "<INFO> Installation folder is: $ARGV4"
+# Restore config if backup exists
+if [ -d "/tmp/${ARGV1}_upgrade/config/$PDIR" ]; then
+    echo "<INFO> Stelle Konfiguration wieder her..."
+    cp -v -r /tmp/${ARGV1}_upgrade/config/$PDIR/* $LBHOMEDIR/config/plugins/$PDIR/ 2>/dev/null
+fi
 
-ARGV5=$5 # Fifth argument is Base folder of LoxBerry
-# echo "<INFO> Base folder is: $ARGV5"
+# Remove old legacy cron jobs from v1.x (Vitoconnect now runs as daemon)
+echo "<INFO> Bereinige alte Cronjobs aus Version 1.x..."
+rm -f $LBHOMEDIR/system/cron/cron.*min/Vitoconnect 2>/dev/null
+rm -f $LBHOMEDIR/system/cron/cron.hourly/Vitoconnect 2>/dev/null
 
-echo "<INFO> Copy back existing config files"
-cp -v -r /tmp/$ARGV1\_upgrade/config/$ARGV3/* $ARGV5/config/plugins/$ARGV3/ 
+# Ensure Python venv and permissions
+VENV_DIR="$PDATA/venv"
+if [ ! -d "$VENV_DIR" ]; then
+    echo "<INFO> Erstelle Python Virtual Environment..."
+    python3 -m venv "$VENV_DIR"
+fi
 
-echo "<INFO> Copy back existing log files"
-cp -v -r /tmp/$ARGV1\_upgrade/log/$ARGV3/* $ARGV5/log/plugins/$ARGV3/ 
+if [ -f "$VENV_DIR/bin/pip" ]; then
+    echo "<INFO> Aktualisiere PyViCare und paho-mqtt im venv..."
+    "$VENV_DIR/bin/pip" install --upgrade PyViCare paho-mqtt
+fi
 
-echo "<INFO> Copy back existing cron jobs"
-[ -f /tmp/$ARGV1\_upgrade/cron/cron.01min/Vitoconnect ] && cp -v -r /tmp/$ARGV1\_upgrade/cron/cron.01min/Vitoconnect $ARGV5/system/cron/cron.01min/Vitoconnect
-[ -f /tmp/$ARGV1\_upgrade/cron/cron.03min/Vitoconnect ] && cp -v -r /tmp/$ARGV1\_upgrade/cron/cron.03min/Vitoconnect $ARGV5/system/cron/cron.03min/Vitoconnect
-[ -f /tmp/$ARGV1\_upgrade/cron/cron.05min/Vitoconnect ] && cp -v -r /tmp/$ARGV1\_upgrade/cron/cron.05min/Vitoconnect $ARGV5/system/cron/cron.05min/Vitoconnect
-[ -f /tmp/$ARGV1\_upgrade/cron/cron.10min/Vitoconnect ] && cp -v -r /tmp/$ARGV1\_upgrade/cron/cron.10min/Vitoconnect $ARGV5/system/cron/cron.10min/Vitoconnect
-[ -f /tmp/$ARGV1\_upgrade/cron/cron.15min/Vitoconnect ] && cp -v -r /tmp/$ARGV1\_upgrade/cron/cron.15min/Vitoconnect $ARGV5/system/cron/cron.15min/Vitoconnect
-[ -f /tmp/$ARGV1\_upgrade/cron/cron.30min/Vitoconnect ] && cp -v -r /tmp/$ARGV1\_upgrade/cron/cron.30min/Vitoconnect $ARGV5/system/cron/cron.30min/Vitoconnect
-[ -f /tmp/$ARGV1\_upgrade/cron/cron.hourly/Vitoconnect ] && cp -v -r /tmp/$ARGV1\_upgrade/cron/cron.hourly/Vitoconnect $ARGV5/system/cron/cron.hourly/Vitoconnect
+if [ -d "$PBIN" ]; then
+    chmod +x "$PBIN"/* 2>/dev/null
+fi
+if [ -d "$PDAEMON" ]; then
+    chmod +x "$PDAEMON"/* 2>/dev/null
+fi
 
-echo "<INFO> Remove temporary folders"
-rm -r /tmp/$ARGV1\_upgrade
+# Clean up temp folder
+rm -rf /tmp/${ARGV1}_upgrade 2>/dev/null
 
-# Exit with Status 0
+echo "<OK> Vitoconnect Upgrade abgeschlossen."
 exit 0

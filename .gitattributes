@@ -1,2 +1,9 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Enforce LF for scripts running on LoxBerry
+*.sh text eol=lf
+*.py text eol=lf
+*.php text eol=lf
+daemon text eol=lf
+apt text eol=lf
