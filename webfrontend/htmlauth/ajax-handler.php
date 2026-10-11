@@ -155,6 +155,94 @@ if ($action == "send_command") {
     }
 }
 
+// 8. Detailed Daemon Diagnostics & Live Log
+if ($action == "get_daemon_diagnostics") {
+    $log_dir = defined("LBPLOGDIR") ? LBPLOGDIR : LBHOMEDIR . "/log/plugins/" . $plugin_dir;
+    $log_file = $log_dir . "/daemon.log";
+
+    $pid_file = file_exists("/run/shm/" . $plugin_dir . ".pid") ? "/run/shm/" . $plugin_dir . ".pid" : "/tmp/" . $plugin_dir . ".pid";
+    $is_running = false;
+    $pid = null;
+
+    if (file_exists($pid_file)) {
+        $candidate_pid = trim(file_get_contents($pid_file));
+        if (is_numeric($candidate_pid)) {
+            // Check if process is alive
+            $chk = shell_exec("ps -p " . escapeshellarg($candidate_pid) . " -o pid= 2>/dev/null");
+            if (!empty(trim($chk))) {
+                $is_running = true;
+                $pid = (int)$candidate_pid;
+            }
+        }
+    }
+
+    $reason_code = "OK";
+    $reason_text = "Dienst läuft einwandfrei.";
+    $last_error = null;
+
+    // Read last lines of daemon.log
+    $log_content = "";
+    if (file_exists($log_file)) {
+        $lines = file($log_file);
+        if ($lines !== false) {
+            $slice = array_slice($lines, -100);
+            $log_content = implode("", $slice);
+
+            // Scan backwards for last error or warning
+            for ($i = count($lines) - 1; $i >= max(0, count($lines) - 50); $i--) {
+                $line = $lines[$i];
+                if (stripos($line, "[ERROR]") !== false || stripos($line, "Traceback") !== false || stripos($line, "Error:") !== false) {
+                    $last_error = trim($line);
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!$is_running) {
+        // Diagnose why not running
+        if (!file_exists(CONFIGFILE)) {
+            $reason_code = "NO_CONFIG";
+            $reason_text = "Konfigurationsdatei fehlt. Bitte im Tab 'Settings' anlegen und speichern.";
+        } else {
+            $cfg = json_decode(file_get_contents(CONFIGFILE), true);
+            if (empty($cfg["user"]) || empty($cfg["pass"]) || empty($cfg["apikey"])) {
+                $reason_code = "MISSING_CREDENTIALS";
+                $reason_text = "Viessmann Zugangsdaten unvollständig: Benutzername, Passwort oder Client-ID fehlen in den Einstellungen.";
+            } elseif (!file_exists($data_dir . "/venv/bin/python3")) {
+                $reason_code = "VENV_MISSING";
+                $reason_text = "Python Virtual Environment (venv) fehlt noch. Bitte auf 'PyViCare aktualisieren' klicken oder Plugin neu installieren.";
+            } elseif ($last_error) {
+                $reason_code = "CRASH_OR_ERROR";
+                $reason_text = "Dienst hat einen Fehler gemeldet: " . $last_error;
+            } else {
+                $reason_code = "STOPPED_MANUALLY";
+                $reason_text = "Dienst ist momentan gestoppt (oder wurde noch nicht gestartet).";
+            }
+        }
+    }
+
+    sendresponse(200, "application/json", json_encode([
+        "is_running" => $is_running,
+        "pid" => $pid,
+        "reason_code" => $reason_code,
+        "reason_text" => $reason_text,
+        "last_error" => $last_error,
+        "log_content" => $log_content,
+        "log_file" => $log_file,
+    ]));
+}
+
+// 9. Clear Daemon Log
+if ($action == "clear_log") {
+    $log_dir = defined("LBPLOGDIR") ? LBPLOGDIR : LBHOMEDIR . "/log/plugins/" . $plugin_dir;
+    $log_file = $log_dir . "/daemon.log";
+    if (file_exists($log_file)) {
+        file_put_contents($log_file, "[" . date("Y-m-d H:i:s") . "] [INFO] Log cleared via Web-UI\n");
+    }
+    sendresponse(200, "application/json", json_encode(["success" => true]));
+}
+
 sendresponse(501, "application/json", json_encode(["error" => "No supported action given."]));
 exit(1);
 

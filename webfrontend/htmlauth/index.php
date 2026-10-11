@@ -257,8 +257,16 @@ function checkPyViCareStatus() {
 
 		if (data.daemon_running) {
 			$("#daemon-status-badge").html('<span class="badge-ok">Aktiv & Läuft</span>');
+			$("#service-msg").html("");
 		} else {
 			$("#daemon-status-badge").html('<span class="badge-err">Gestoppt</span>');
+			// Query reason why stopped
+			$.getJSON("ajax-handler.php?action=get_daemon_diagnostics")
+			.done(function(diag) {
+				if (!diag.is_running && diag.reason_text) {
+					$("#service-msg").html("<span style='color:#c0392b;'>⚠️ <b>Hinweis:</b> " + escapeHtml(diag.reason_text) + "</span>");
+				}
+			});
 		}
 
 		if (data.update_available) {
@@ -270,6 +278,11 @@ function checkPyViCareStatus() {
 	.fail(function() {
 		$("#pyvicare-curr").text("Statusfehler");
 	});
+}
+
+function escapeHtml(text) {
+	if (!text) return "";
+	return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function checkStats() {
