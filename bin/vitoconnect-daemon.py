@@ -696,6 +696,26 @@ class VitoconnectDaemon:
             logger.debug(f"Feature lookup exception ({method_name or target}): {e}")
             return default
 
+    def get_property_constraints(self, entity, prop_name: str, cmd_name: str = "setTargetTemperature", param_name: str = "targetTemperature", default_range: str = "10 - 30 °C") -> str:
+        """Extract constraints (min/max range, step, unit, enum) dynamically from Viessmann API property schema."""
+        try:
+            prop = entity.getProperty(prop_name)
+            if isinstance(prop, dict):
+                commands = prop.get("commands", {})
+                cmd_obj = commands.get(cmd_name, {})
+                params = cmd_obj.get("params", {})
+                param_spec = params.get(param_name, {})
+                constraints = param_spec.get("constraints", {})
+                if "min" in constraints and "max" in constraints:
+                    unit_str = f" {constraints.get('unit', '°C')}"
+                    step_str = f" (Schritt {constraints.get('stepping')})" if "stepping" in constraints else ""
+                    return f"{constraints['min']} - {constraints['max']}{unit_str}{step_str}"
+                elif "enum" in constraints:
+                    return ", ".join(str(e) for e in constraints["enum"])
+        except Exception:
+            pass
+        return default_range
+
     def poll_and_publish(self):
         """Poll device status from Viessmann API and publish to MQTT."""
         if not self.vicare or not self.devices:
@@ -882,6 +902,13 @@ class VitoconnectDaemon:
 
                 dhw_target = self.safe_get(device, "getDomesticHotWaterTargetTemperature")
                 if dhw_target is not None:
+                    dhw_allowed = self.get_property_constraints(
+                        device,
+                        "heating.dhw.temperature.main",
+                        cmd_name="setTargetTemperature",
+                        param_name="targetTemperature",
+                        default_range="10 - 65 °C",
+                    )
                     record(
                         f"{dev_prefix}/dhw/target_temperature",
                         round(dhw_target, 2),
@@ -889,7 +916,7 @@ class VitoconnectDaemon:
                         "Warmwasser-Sollwert",
                         writable=True,
                         set_topic=f"{set_prefix}/dhw/target_temperature",
-                        allowed_values="10 - 65 °C",
+                        allowed_values=dhw_allowed,
                         command_name="setTargetTemperature",
                     )
 
@@ -1020,8 +1047,16 @@ class VitoconnectDaemon:
                     if room_t is not None:
                         record(f"{c_prefix}/room_temperature", round(room_t, 2), "°C", f"Heizkreis {c_idx}: Raumtemperatur")
 
+                    c_id = getattr(circuit, "circuit", c_idx)
                     normal_t = self.safe_get(circuit, "getNormalTargetTemperature")
                     if normal_t is not None:
+                        norm_allowed = self.get_property_constraints(
+                            circuit,
+                            f"heating.circuits.{c_id}.operating.programs.normal",
+                            cmd_name="setTargetTemperature",
+                            param_name="targetTemperature",
+                            default_range="10 - 30 °C",
+                        )
                         record(
                             f"{c_prefix}/normal_temperature",
                             normal_t,
@@ -1029,12 +1064,19 @@ class VitoconnectDaemon:
                             f"Heizkreis {c_idx}: Normal-Sollwert",
                             writable=True,
                             set_topic=f"{c_set_prefix}/normal_temperature",
-                            allowed_values="10 - 30 °C",
+                            allowed_values=norm_allowed,
                             command_name="setTargetTemperature",
                         )
 
                     comfort_t = self.safe_get(circuit, "getComfortTargetTemperature")
                     if comfort_t is not None:
+                        comf_allowed = self.get_property_constraints(
+                            circuit,
+                            f"heating.circuits.{c_id}.operating.programs.comfort",
+                            cmd_name="setTargetTemperature",
+                            param_name="targetTemperature",
+                            default_range="10 - 30 °C",
+                        )
                         record(
                             f"{c_prefix}/comfort_temperature",
                             comfort_t,
@@ -1042,12 +1084,19 @@ class VitoconnectDaemon:
                             f"Heizkreis {c_idx}: Komfort-Sollwert",
                             writable=True,
                             set_topic=f"{c_set_prefix}/comfort_temperature",
-                            allowed_values="10 - 30 °C",
+                            allowed_values=comf_allowed,
                             command_name="setComfortTargetTemperature",
                         )
 
                     reduced_t = self.safe_get(circuit, "getReducedTargetTemperature")
                     if reduced_t is not None:
+                        red_allowed = self.get_property_constraints(
+                            circuit,
+                            f"heating.circuits.{c_id}.operating.programs.reduced",
+                            cmd_name="setTargetTemperature",
+                            param_name="targetTemperature",
+                            default_range="10 - 30 °C",
+                        )
                         record(
                             f"{c_prefix}/reduced_temperature",
                             reduced_t,
@@ -1055,7 +1104,7 @@ class VitoconnectDaemon:
                             f"Heizkreis {c_idx}: Absenk-Sollwert",
                             writable=True,
                             set_topic=f"{c_set_prefix}/reduced_temperature",
-                            allowed_values="10 - 30 °C",
+                            allowed_values=red_allowed,
                             command_name="setReducedTargetTemperature",
                         )
 
