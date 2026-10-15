@@ -275,16 +275,31 @@ $(document).ready(function() {
 			return;
 		}
 
-		$("#cmd-feedback").css("color", "blue").text("Sende Befehl an MQTT...");
+		var btn = $(this);
+		btn.prop("disabled", true).text("Sende...");
+		$("#cmd-feedback").css("color", "#0284c7").text("Sende Befehl an MQTT Broker (" + topic + " = " + val + ")...");
+
 		$.post("ajax-handler.php?action=send_command", { topic: topic, value: val })
 		.done(function(res) {
-			$("#cmd-feedback").css("color", "green").text("Befehl gesendet: " + topic + " = " + val);
-			setTimeout(function() {
-				loadLiveValues();
-			}, 4000);
+			btn.prop("disabled", false).text("Befehl senden");
+			if (res && res.success) {
+				$("#cmd-feedback").css("color", "#16a34a").text("Befehl erfolgreich gesendet: " + topic + " = " + val + ". Aktualisiere Live-Werte...");
+				setTimeout(function() {
+					loadLiveValues();
+				}, 3500);
+			} else {
+				var err = (res && res.error) ? res.error : "Fehler beim Senden des Befehls.";
+				$("#cmd-feedback").css("color", "#dc2626").text(err);
+			}
 		})
-		.fail(function() {
-			$("#cmd-feedback").css("color", "red").text("Fehler beim Senden des Befehls.");
+		.fail(function(xhr) {
+			btn.prop("disabled", false).text("Befehl senden");
+			var err = "Fehler beim Senden des Befehls an MQTT.";
+			try {
+				var j = JSON.parse(xhr.responseText);
+				if (j.error) err = j.error;
+			} catch(e) {}
+			$("#cmd-feedback").css("color", "#dc2626").text(err);
 		});
 	});
 

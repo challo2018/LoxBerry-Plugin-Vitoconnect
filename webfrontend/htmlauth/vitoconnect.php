@@ -40,9 +40,7 @@ if (file_exists(CONFIGFILE)) {
 
 if ($action == "summary" || $action == "sum") {
     LOGINF("Legacy trigger: requesting immediate poll via MQTT ($topic/poll)");
-    if (function_exists("mqtt_publish")) {
-        mqtt_publish("$topic/poll", "1");
-    }
+    vitoconnect_mqtt_publish("$topic/poll", "1");
     echo json_encode(["status" => "ok", "message" => "Triggered poll via daemon"]);
     LOGEND("Finished");
     exit(0);
@@ -55,9 +53,11 @@ if ($action == "setvalue" && $option !== null && $value !== null) {
     $subtopic = str_replace(".", "/", $option);
     $targetTopic = "$topic/set/$subtopic";
     
-    if (function_exists("mqtt_publish")) {
-        mqtt_publish($targetTopic, (string)$value);
+    $res = vitoconnect_mqtt_publish($targetTopic, (string)$value);
+    if (!empty($res["success"])) {
         LOGINF("Published to MQTT: $targetTopic = $value");
+    } else {
+        LOGERR("Failed to publish to MQTT: " . ($res["error"] ?? "unknown error"));
     }
     
     echo json_encode(["status" => "ok", "topic" => $targetTopic, "value" => $value]);

@@ -140,31 +140,26 @@ if ($action == "get_live_values") {
 
 // 7. Send Command to MQTT (for Testing from GUI)
 if ($action == "send_command") {
-    require_once "loxberry_io.php";
     $target_topic = isset($_POST["topic"]) ? trim($_POST["topic"]) : (isset($_GET["topic"]) ? trim($_GET["topic"]) : "");
     $value = isset($_POST["value"]) ? trim($_POST["value"]) : (isset($_GET["value"]) ? trim($_GET["value"]) : "");
 
     if (empty($target_topic)) {
-        sendresponse(400, "application/json", json_encode(["error" => "Topic is missing"]));
+        sendresponse(400, "application/json", json_encode(["success" => false, "error" => "Topic is missing"]));
     }
 
-    if (function_exists("mqtt_publish")) {
-        $pub_res = mqtt_publish($target_topic, $value);
+    $res = vitoconnect_mqtt_publish($target_topic, $value);
+
+    if (!empty($res["success"])) {
         sendresponse(200, "application/json", json_encode([
             "success" => true,
             "topic" => $target_topic,
             "value" => $value,
-            "message" => "Befehl erfolgreich an MQTT übergeben"
+            "message" => "Befehl erfolgreich an MQTT gesendet ($target_topic = $value)"
         ]));
     } else {
-        // Fallback: mosquitto_pub CLI
-        $cmd = "mosquitto_pub -t " . escapeshellarg($target_topic) . " -m " . escapeshellarg($value) . " 2>&1";
-        shell_exec($cmd);
-        sendresponse(200, "application/json", json_encode([
-            "success" => true,
-            "topic" => $target_topic,
-            "value" => $value,
-            "message" => "Befehl über mosquitto_pub übergeben"
+        sendresponse(500, "application/json", json_encode([
+            "success" => false,
+            "error" => "Fehler beim Senden an MQTT: " . ($res["error"] ?? "Unbekannter Fehler")
         ]));
     }
 }
