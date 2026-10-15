@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>LoxBerry Plugin: Viessmann Vitoconnect 2.0 – Dokumentation</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm 15mm 20mm 15mm;
+            @bottom-right {
+                content: counter(page);
+            }
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            line-height: 1.55;
+            font-size: 10.5pt;
+            background: #fff;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            border-bottom: 3px solid #0284c7;
+            padding-bottom: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        .header h1 {
+            color: #0369a1;
+            margin: 0 0 4px 0;
+            font-size: 22pt;
+        }
+        .header .subtitle {
+            color: #64748b;
+            font-size: 11pt;
+            font-weight: 500;
+        }
+        .badge {
+            background: #0284c7;
+            color: #ffffff;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 9pt;
+            font-weight: 600;
+            display: inline-block;
+        }
+        h2 {
+            color: #0f172a;
+            border-bottom: 1.5px solid #e2e8f0;
+            padding-bottom: 6px;
+            margin-top: 24px;
+            margin-bottom: 10px;
+            font-size: 14pt;
+            page-break-after: avoid;
+        }
+        h3 {
+            color: #1e293b;
+            margin-top: 16px;
+            margin-bottom: 6px;
+            font-size: 12pt;
+            page-break-after: avoid;
+        }
+        h4 {
+            color: #334155;
+            margin-top: 12px;
+            margin-bottom: 4px;
+            font-size: 11pt;
+            page-break-after: avoid;
+        }
+        p, ul, ol {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        ul, ol {
+            padding-left: 22px;
+        }
+        li {
+            margin-bottom: 4px;
+        }
+        code {
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            background: #f1f5f9;
+            color: #0f172a;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 9.5pt;
+        }
+        pre {
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 9pt;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 16px 0;
+            font-size: 9pt;
+            page-break-inside: avoid;
+        }
+        th, td {
+            border: 1px solid #cbd5e1;
+            padding: 6px 9px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background: #f8fafc;
+            color: #334155;
+            font-weight: 600;
+        }
+        tr:nth-child(even) td {
+            background: #f8fafc;
+        }
+        .callout {
+            border-left: 4px solid #0284c7;
+            background: #f0f9ff;
+            padding: 10px 14px;
+            margin: 12px 0;
+            border-radius: 0 6px 6px 0;
+            font-size: 9.5pt;
+        }
+        .callout.warn {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+        }
+        .callout.important {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+        .callout-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: #0f172a;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+        .footer-note {
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 8.5pt;
+            color: #64748b;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <h1>Viessmann Vitoconnect Gateway</h1>
+        <div class="subtitle">Offizielle Dokumentation für das LoxBerry Plugin &bull; Version 2.0 (PyViCare Edition)</div>
+    </div>
+    <div>
+        <span class="badge">LoxBerry 3 / 4</span>
+    </div>
+</div>
+
+<h2>1. Übersicht &amp; Highlights der Version 2.0</h2>
+<p>
+    Das <b>Viessmann Vitoconnect LoxBerry Plugin</b> bindet Viessmann Heizungsanlagen (Gas-, Öl- und Pellet-Brennwertgeräte, Wärmepumpen sowie Hybrid-Systeme mit Vitoconnect 100/200 oder integriertem WLAN-Modul) nahtlos an den <b>Loxone Miniserver</b> an.
+</p>
+<p>
+    Mit der Version 2.0 wurde das Plugin von Grund auf modernisiert und basiert nun auf der bewährten Python-Bibliothek <b>PyViCare</b>:
+</p>
+<ul>
+    <li><b>Moderne PyViCare-Architektur:</b> Schneller, stabiler und ressourcenschonender Hintergrunddienst mit automatischer OAuth2-Token-Erneuerung (keine Verbindungsabbrüche mehr).</li>
+    <li><b>Vollständige Bidirektionale Steuerung über MQTT:</b> Betriebsmodi (z. B. <code>heating</code>, <code>dhwAndHeating</code>, <code>standby</code>), Raum- und Solltemperaturen sowie Warmwasser-Einmalladung können direkt aus Loxone über intuitive <code>vitoconnect/set/...</code> Topics gesteuert werden.</li>
+    <li><b>Dynamische Parameter &amp; Constraints:</b> Das Plugin ermittelt erlaubte Betriebsmodi, Min/Max-Temperaturgrenzen und Schrittweiten live und anlagenspezifisch direkt aus der Viessmann API.</li>
+    <li><b>Automatisches API-Quota-Management:</b> Schützt den Viessmann-Account zuverlässig vor Sperren durch das 1.450 Calls / 24h Tageslimit.</li>
+    <li><b>LoxBerry Design System (LoxBerry DS):</b> Neues, modernes Webfrontend mit Dark-Mode-Unterstützung, Live-Statistiken, interaktivem Testpanel und Datenpunkt-Suchfunktion mit 1-Klick-Kopierbuttons für Loxone Config.</li>
+    <li><b>1-Klick-Bibliotheks-Updates:</b> PyViCare kann bei API-Änderungen durch Viessmann direkt über die Weboberfläche aktualisiert werden.</li>
+</ul>
+
+<div class="callout">
+    <div class="callout-title">Hinweis für Umsteiger von Version 1.x:</div>
+    Die veralteten HTTP-Ausgangsbefehle (<code>vitoconnect.php?action=setvalue</code>) und Cronjobs entfallen vollständig. Die gesamte Kommunikation erfolgt modern, schnell und eventbasiert über das <b>LoxBerry MQTT Gateway</b>.
+</div>
+
+<h2>2. Voraussetzungen &amp; Viessmann Developer Portal Setup</h2>
+<p>
+    Für die Nutzung des Plugins ist ein kostenloser Entwickler-Zugang bei Viessmann erforderlich:
+</p>
+<ol>
+    <li>Registriere dich mit deinem bestehenden ViCare-Konto im <b>Viessmann Developer Portal</b> (<a href="https://developer.viessmann.com/" target="_blank">https://developer.viessmann.com/</a>).</li>
+    <li>Navigiere im Menü auf <b>API Keys</b> und klicke auf <b>Create API Key</b>.</li>
+    <li>Vergib einen beliebigen Namen (z. B. <i>LoxBerry Vitoconnect</i>).</li>
+    <li><b>Sehr wichtig – Redirect URI:</b> Trage als Redirect URI exakt folgende Adresse ein:<br>
+        <code>vicare://oauth-callback/everest</code>
+    </li>
+    <li><b>Sehr wichtig – Google reCAPTCHA:</b> Wähle bei reCAPTCHA zwingend <b>Disabled</b> aus (da LoxBerry im Hintergrund läuft und kein Captcha lösen kann).</li>
+    <li>Klicke auf <b>Save</b> und kopiere die generierte <b>Client-ID</b> (API-Key).</li>
+</ol>
+
+<div class="callout important">
+    <div class="callout-title">Achtung:</div>
+    Wird die Redirect URI abweichend eingetragen oder reCAPTCHA aktiviert gelassen, kann sich das Plugin nicht bei Viessmann authentifizieren!
+</div>
+
+<div class="page-break"></div>
+
+<h2>3. Konfiguration im LoxBerry</h2>
+<p>
+    Öffne im LoxBerry die Weboberfläche des Vitoconnect-Plugins unter <b>Plugins &rarr; Vitoconnect &rarr; Settings</b>:
+</p>
+
+<h3>3.1 Viessmann Account &amp; API</h3>
+<ul>
+    <li><b>E-Mail (Benutzername):</b> Deine E-Mail-Adresse des ViCare Accounts.</li>
+    <li><b>Passwort:</b> Dein Passwort des ViCare Accounts.</li>
+    <li><b>Client-ID (API-Key):</b> Die im Viessmann Developer Portal erstellte Client-ID.</li>
+</ul>
+
+<h3>3.2 Abfrage-Intervall &amp; Quota-Schutz</h3>
+<p>
+    Viessmann erlaubt für Privatanwender maximal <b>1.450 API-Aufrufe pro 24 Stunden</b>. Das Plugin berechnet das Kontingent automatisch und bietet folgende Intervalle:
+</p>
+<ul>
+    <li><b>120 Sekunden (Empfohlen):</b> Entspricht ~720 Aufrufen/Tag. Bietet perfekte Aktualität und lässt 50 % Reserve für Steuerbefehle.</li>
+    <li><b>180 Sekunden (3 Minuten):</b> ~480 Aufrufe/Tag (ideal bei mehreren Heizkreisen/Geräten).</li>
+    <li><b>60 Sekunden (1 Minute):</b> ~1.440 Aufrufe/Tag (Achtung: kaum Reserve für Steuerbefehle).</li>
+</ul>
+
+<h3>3.3 MQTT Gateway Konfiguration</h3>
+<p>
+    Das Plugin liest die Verbindungsdaten des LoxBerry MQTT Gateway Brokers automatisch aus. In den Einstellungen muss lediglich festgelegt werden:
+</p>
+<ul>
+    <li><b>MQTT aktivieren:</b> Schalter auf <i>Ein</i>.</li>
+    <li><b>Basis-Topic:</b> Standard ist <code>vitoconnect</code> (der Miniserver empfängt Werte unter <code>vitoconnect/#</code>).</li>
+    <li><b>Multi-Device Topics:</b>
+        <ul>
+            <li><i>Aus (Standard / Abwärtskompatibel):</i> Hauptheizgerät publiziert direkt unter <code>vitoconnect/...</code> (kompatibel zu Loxone Config v1.x).</li>
+            <li><i>Ein:</i> Bei mehreren Geräten oder Wärmepumpen-Kombinationen erhält jedes Gerät sein eigenes Präfix (z. B. <code>vitoconnect/device_0/...</code> und <code>vitoconnect/device_1/...</code>).</li>
+        </ul>
+    </li>
+</ul>
+
+<h2>4. Monitoring, Live-Werte &amp; Testpanel</h2>
+<p>
+    In der Registerkarte <b>Query links &amp; Data</b> stehen umfangreiche Diagnose- und Steuerwerkzeuge zur Verfügung:
+</p>
+<ul>
+    <li><b>Dienst- &amp; Quota-Monitor:</b> Zeigt den Online-Status des Hintergrunddienstes, die verbleibenden API-Aufrufe der letzten 24h sowie den Zeitstempel des letzten Abrufs in Echtzeit.</li>
+    <li><b>Interaktives Testpanel:</b> Ermöglicht das Testen von Steuerbefehlen (Betriebsmodus, Sollwerte, Warmwasser-Push) direkt im Browser mit sofortiger Erfolgsmeldung, bevor die Logik in Loxone Config programmiert wird.</li>
+    <li><b>Live-Datenpunkte:</b> Vollständige Tabelle aller von der Heizung bereitgestellten Werte. Über das Suchfeld kann nach Begriffen wie <i>Vorlauf</i>, <i>Brenner</i> oder <i>HK0</i> gefiltert werden. Ein Klick auf <b>[Kopieren]</b> übernimmt das exakte MQTT Topic in die Zwischenablage.</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h2>5. Einbindung in Loxone Config (Schritt für Schritt)</h2>
+
+<h3>5.1 Voraussetzungen in Loxone</h3>
+<p>
+    Stelle sicher, dass im <b>LoxBerry MQTT Gateway Plugin</b> das Topic <code>vitoconnect/#</code> abonniert (subscribed) ist. Das LoxBerry MQTT Gateway überträgt die Werte automatisch als virtuelle HTTP-Eingänge oder MQTT-Eingänge an deinen Miniserver.
+</p>
+
+<h3>5.2 Werte empfangen (Virtuelle MQTT-Eingänge)</h3>
+<p>
+    Für jeden gewünschten Wert legst du in Loxone Config unter <b>Virtuelle Eingänge</b> einen neuen Eingang an:
+</p>
+<ul>
+    <li><b>Bezeichnung:</b> Das jeweilige MQTT Topic, z. B. <code>vitoconnect/circuit_0/room_temperature</code></li>
+    <li><b>Datentyp:</b> Bei analogen Werten (Temperaturen, Druck) den Haken <i>„Als Digitaleingang verwenden“</i> deaktivieren. Bei Statusmeldungen (Brenner aktiv, Pumpe) als Digitaleingang verwenden.</li>
+    <li><b>Texteingänge:</b> Für den Betriebsmodus oder Fehlercodes einen <b>Virtuellen Texteingang (VIT)</b> mit Topic <code>vitoconnect/circuit_0/mode</code> verwenden.</li>
+</ul>
+
+<h3>5.3 Heizung aus Loxone steuern (Virtuelle Ausgänge)</h3>
+<p>
+    Um Werte an Viessmann zu senden, legst du in Loxone Config einen <b>Virtuellen Ausgang</b> an:
+</p>
+<ol>
+    <li>Erstelle einen Virtuellen Ausgang mit der Adresse des MQTT Brokers (oder nutze das MQTT Gateway).</li>
+    <li>Füge einen <b>Virtuellen Ausgangsbefehl</b> hinzu:
+        <ul>
+            <li><b>Befehl bei EIN:</b> Sende an das gewünschte <code>vitoconnect/set/...</code> Topic mit dem gewünschten Wert.</li>
+        </ul>
+    </li>
+</ol>
+
+<h4>Beispiele für Steuerbefehle:</h4>
+<table style="margin-top: 6px;">
+    <thead>
+        <tr>
+            <th>Steuerziel</th>
+            <th>MQTT Set-Topic</th>
+            <th>Mögliche Werte / Payload</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><b>Betriebsmodus HK 0</b></td>
+            <td><code>vitoconnect/set/circuit_0/mode</code></td>
+            <td><code>heating</code>, <code>dhwAndHeating</code>, <code>dhw</code>, <code>standby</code>, <code>cooling</code></td>
+        </tr>
+        <tr>
+            <td><b>Normal-Solltemperatur</b></td>
+            <td><code>vitoconnect/set/circuit_0/normal_temperature</code></td>
+            <td>Zahl, z. B. <code>21.0</code> oder <code>22.5</code></td>
+        </tr>
+        <tr>
+            <td><b>Komfort-Solltemperatur</b></td>
+            <td><code>vitoconnect/set/circuit_0/comfort_temperature</code></td>
+            <td>Zahl, z. B. <code>23.0</code></td>
+        </tr>
+        <tr>
+            <td><b>Absenk-Solltemperatur</b></td>
+            <td><code>vitoconnect/set/circuit_0/reduced_temperature</code></td>
+            <td>Zahl, z. B. <code>17.5</code></td>
+        </tr>
+        <tr>
+            <td><b>Warmwasser-Sollwert</b></td>
+            <td><code>vitoconnect/set/dhw/target_temperature</code></td>
+            <td>Zahl, z. B. <code>55.0</code></td>
+        </tr>
+        <tr>
+            <td><b>Einmalige WW-Bereitung (Push)</b></td>
+            <td><code>vitoconnect/set/dhw/one_time_charge</code></td>
+            <td><code>start</code> / <code>1</code> (Aktivieren) oder <code>stop</code> / <code>0</code> (Stoppen)</td>
+        </tr>
+        <tr>
+            <td><b>Sofortige API-Abfrage (Poll)</b></td>
+            <td><code>vitoconnect/poll</code></td>
+            <td><code>1</code> (triggert sofortigen Datenabruf ohne Warten auf Intervall)</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="callout">
+    <div class="callout-title">Tipp für Loxone Statusbausteine:</div>
+    Verbinde den virtuellen Texteingang <code>vitoconnect/circuit_0/mode</code> mit einem Loxone Status-Baustein, um den Betriebsmodus in der Loxone App als Klartext (z. B. <i>„Nur Heizen“</i>, <i>„Heizen &amp; Warmwasser“</i>, <i>„Standby“</i>) darzustellen und über Radiobuttons oder Auswahltasten direkt umzuschalten.
+</div>
+
+<div class="page-break"></div>
+
+<h2>6. Vollständige MQTT-Topic Referenz</h2>
+
+<h3>6.1 Standard-Sensoren &amp; Messwerte (Lesen)</h3>
+<table>
+    <thead>
+        <tr>
+            <th>MQTT Topic</th>
+            <th>Einheit</th>
+            <th>Beschreibung</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>vitoconnect/outside_temperature</code></td>
+            <td>°C</td>
+            <td>Außentemperaturfühler</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/boiler/temperature</code></td>
+            <td>°C</td>
+            <td>Kesseltemperatur</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/burner/active</code></td>
+            <td>0 / 1</td>
+            <td>Brennerbetrieb aktiv</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/burner/hours</code></td>
+            <td>h</td>
+            <td>Brennerbetriebsstunden gesamt</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/burner/starts</code></td>
+            <td>Zahl</td>
+            <td>Brennerstarts gesamt</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/burner/modulation</code></td>
+            <td>%</td>
+            <td>Brennermodulation (Leistungsstufe)</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/pressure/supply</code></td>
+            <td>bar</td>
+            <td>Anlagendruck / Vorlaufdruck</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/circuit_0/mode</code></td>
+            <td>Text</td>
+            <td>Aktiver Betriebsmodus des Heizkreises 0</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/circuit_0/program</code></td>
+            <td>Text</td>
+            <td>Aktives Programm (normal, reduced, comfort, standby)</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/circuit_0/normal_temperature</code></td>
+            <td>°C</td>
+            <td>Eingestellter Normal-Sollwert</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/circuit_0/comfort_temperature</code></td>
+            <td>°C</td>
+            <td>Eingestellter Komfort-Sollwert</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/circuit_0/reduced_temperature</code></td>
+            <td>°C</td>
+            <td>Eingestellter Absenk-Sollwert</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/circuit_0/supply_temperature</code></td>
+            <td>°C</td>
+            <td>Vorlauftemperatur des Heizkreises 0</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/circuit_0/circulation_pump</code></td>
+            <td>0 / 1</td>
+            <td>Heizkreispumpe aktiv</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/circuit_0/heating_curve_slope</code></td>
+            <td>Zahl</td>
+            <td>Heizkennlinie Neigung (z. B. 1.2)</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/circuit_0/heating_curve_shift</code></td>
+            <td>K</td>
+            <td>Heizkennlinie Niveau (Parallelverschiebung)</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/dhw/temperature</code></td>
+            <td>°C</td>
+            <td>Warmwasserspeichertemperatur</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/dhw/target_temperature</code></td>
+            <td>°C</td>
+            <td>Warmwasser-Solltemperatur</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/dhw/circulation_pump</code></td>
+            <td>0 / 1</td>
+            <td>Warmwasser-Zirkulationspumpe aktiv</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/dhw/one_time_charge</code></td>
+            <td>0 / 1</td>
+            <td>Status der einmaligen Warmwasserladung (Push)</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/solar/collector_temperature</code></td>
+            <td>°C</td>
+            <td>Solar-Kollektortemperatur (falls vorhanden)</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/solar/storage_temperature</code></td>
+            <td>°C</td>
+            <td>Solar-Speichertemperatur (falls vorhanden)</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/solar/pump_active</code></td>
+            <td>0 / 1</td>
+            <td>Solarpumpe aktiv</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/errors/count</code></td>
+            <td>Zahl</td>
+            <td>Anzahl aktuell anstehender Fehler (0 = alles i.O.)</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/quota/calls_24h</code></td>
+            <td>Zahl</td>
+            <td>Bisherige API-Aufrufe in den letzten 24 Stunden</td>
+        </tr>
+        <tr>
+            <td><code>vitoconnect/quota/remaining</code></td>
+            <td>Zahl</td>
+            <td>Verbleibende API-Aufrufe (von 1.450 / 24h)</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>6.2 Erweiterte Viessmann-Features (Generic Property Topics)</h3>
+<p>
+    Zusätzlich zu den Standardpunkten erkennt das Plugin <b>automatisch alle von Viessmann gemeldeten Eigenschaften</b> deiner Heizung und publiziert sie unter <code>vitoconnect/features/...</code> (z. B. <code>vitoconnect/features/heating/circuits/0/heating/curve/slope</code>). Diese sind in der Weboberfläche unter <i>Live-Datenpunkte</i> gelistet und inklusive aller Wertebereiche schreibbar!
+</p>
+
+<h2>7. Häufige Fragen &amp; Fehlerbehebung (FAQ)</h2>
+<p><b>Frage: Warum erhalte ich Fehlermeldungen bezüglich Quota / 429 Too Many Requests?</b><br>
+Antwort: Viessmann begrenzt Entwickler-Accounts streng auf 1.450 Aufrufe pro 24 Stunden. Stelle das Abfrageintervall in den Einstellungen auf mindestens 120 Sekunden. Sollte das Kontingent überschritten worden sein, pausiert der Dienst automatisch, bis wieder Freikontingent verfügbar ist.</p>
+
+<p><b>Frage: Warum wird ein bestimmter Betriebsmodus bei mir nicht angezeigt?</b><br>
+Antwort: Die verfügbaren Betriebsmodi unterscheiden sich je nach Heizungsmodell (z. B. Wärmepumpe mit <code>heating</code> oder Gas-Brennwert mit <code>dhwAndHeating</code>). Das Plugin liest die zulässigen Modi dynamisch aus der Viessmann API aus. Es werden exakt die Modi angeboten, die deine Heizung unterstützt.</p>
+
+<p><b>Frage: Wo finde ich ausführliche Logdateien?</b><br>
+Antwort: Im LoxBerry Webfrontend unter <b>Log-Dateien</b> &rarr; <i>vitoconnect</i>. Dort kann die Protokollierung auf <i>DEBUG</i> umgeschaltet werden, um detaillierte Informationen zur Kommunikation mit der Viessmann Cloud einzusehen.</p>
+
+<div class="footer-note">
+    Viessmann Vitoconnect LoxBerry Plugin &bull; Entwickelt von Fabian Franzmann &bull; Lizenziert unter der MIT-Lizenz &bull; Stand: Oktober 2026
+</div>
+
+</body>
+</html>
