@@ -985,6 +985,18 @@ class VitoconnectDaemon:
 
                     mode = self.safe_get(circuit, "getActiveMode")
                     if mode is not None:
+                        # Dynamically query supported modes from PyViCare/Viessmann API for this circuit
+                        raw_modes = self.safe_get(circuit, "getModes")
+                        modes_list = list(raw_modes) if (raw_modes and isinstance(raw_modes, (list, tuple, set))) else []
+
+                        if mode and mode not in modes_list:
+                            modes_list.append(mode)
+
+                        if not modes_list:
+                            modes_list = ["standby", "dhw", "dhwAndHeating", "heating", "cooling", "forcedReduced", "forcedNormal"]
+
+                        allowed_modes_str = ", ".join(modes_list)
+
                         record(
                             f"{c_prefix}/mode",
                             mode,
@@ -992,7 +1004,7 @@ class VitoconnectDaemon:
                             f"Heizkreis {c_idx}: Betriebsmodus",
                             writable=True,
                             set_topic=f"{c_set_prefix}/mode",
-                            allowed_values="standby, dhw, dhwAndHeating, forcedReduced, forcedNormal",
+                            allowed_values=allowed_modes_str,
                             command_name="setMode",
                         )
 

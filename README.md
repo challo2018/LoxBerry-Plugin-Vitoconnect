@@ -45,7 +45,7 @@ Basis-Topic standardmäßig: `vitoconnect`
 | `vitoconnect/circuit_0/normal_temperature` | Normal-Solltemperatur (HK 0) | °C |
 | `vitoconnect/circuit_0/comfort_temperature` | Komfort-Solltemperatur (HK 0) | °C |
 | `vitoconnect/circuit_0/reduced_temperature` | Absenk-Temperatur (HK 0) | °C |
-| `vitoconnect/circuit_0/mode` | Betriebsart (HK 0) | `standby`, `dhw`, `dhwAndHeating` |
+| `vitoconnect/circuit_0/mode` | Betriebsart (HK 0) | z. B. `standby`, `dhw`, `dhwAndHeating`, `heating` (anlagenabhängig) |
 | `vitoconnect/errors/count` | Anzahl aktiver Fehler | Zahl |
 | `vitoconnect/quota/calls_24h` | API-Aufrufe der letzten 24 Std. | Zahl |
 | `vitoconnect/quota/remaining` | Verbleibende API-Aufrufe | Zahl (max. 1.450) |
@@ -57,7 +57,7 @@ Basis-Topic standardmäßig: `vitoconnect`
 | `vitoconnect/set/circuit_0/normal_temperature` | `21.5` | Setzt normale Solltemperatur |
 | `vitoconnect/set/circuit_0/comfort_temperature` | `23.0` | Setzt Komfort-Temperatur |
 | `vitoconnect/set/circuit_0/reduced_temperature` | `17.0` | Setzt Absenktemperatur |
-| `vitoconnect/set/circuit_0/mode` | `dhwAndHeating` | Ändert Betriebsmodus |
+| `vitoconnect/set/circuit_0/mode` | `dhwAndHeating` oder `heating` | Ändert Betriebsmodus (erlaubte Werte siehe Web-UI) |
 | `vitoconnect/set/dhw/target_temperature` | `55.0` | Setzt Warmwasser-Sollwert |
 | `vitoconnect/set/dhw/one_time_charge` | `1` / `0` oder `start` / `stop` | Startet/Stoppt WW-Push |
 | `vitoconnect/poll` | `1` | Löst sofortige API-Abfrage aus |

@@ -152,7 +152,7 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 				<option value="<?=$mqtttopic;?>/set/circuit_0/normal_temperature">Heizkreis 0: Normal-Sollwert (z.B. 21.0)</option>
 				<option value="<?=$mqtttopic;?>/set/circuit_0/comfort_temperature">Heizkreis 0: Komfort-Sollwert (z.B. 23.0)</option>
 				<option value="<?=$mqtttopic;?>/set/circuit_0/reduced_temperature">Heizkreis 0: Absenk-Sollwert (z.B. 17.0)</option>
-				<option value="<?=$mqtttopic;?>/set/circuit_0/mode">Heizkreis 0: Betriebsmodus (standby, dhw, dhwAndHeating)</option>
+				<option value="<?=$mqtttopic;?>/set/circuit_0/mode">Heizkreis 0: Betriebsmodus (z. B. heating, standby, dhw, dhwAndHeating)</option>
 				<option value="<?=$mqtttopic;?>/set/dhw/target_temperature">Warmwasser: Sollwert (z.B. 55.0)</option>
 				<option value="<?=$mqtttopic;?>/set/dhw/one_time_charge">Warmwasser: Einmalige Aufheizung (start / stop)</option>
 			</select>
