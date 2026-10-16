@@ -1020,7 +1020,7 @@ class VitoconnectDaemon:
                             modes_list.append(mode)
 
                         if not modes_list:
-                            modes_list = ["standby", "dhw", "dhwAndHeating", "heating", "cooling", "forcedReduced", "forcedNormal"]
+                            modes_list = ["standby", "dhw", "dhwAndHeating", "dhwAndHeatingCooling", "heating", "cooling", "forcedReduced", "forcedNormal"]
 
                         allowed_modes_str = ", ".join(modes_list)
 

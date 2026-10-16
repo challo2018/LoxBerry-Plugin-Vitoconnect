@@ -55,5 +55,11 @@ if [ -d "$PDAEMON" ]; then
     chmod +x "$PDAEMON"/* 2>/dev/null
 fi
 
+# Restart daemon if running or installed
+if [ -x "$PDAEMON/daemon.sh" ]; then
+    echo "<INFO> Starte Vitoconnect Daemon neu..."
+    "$PDAEMON/daemon.sh" restart 2>&1
+fi
+
 echo "<OK> Vitoconnect Installation abgeschlossen."
 exit 0

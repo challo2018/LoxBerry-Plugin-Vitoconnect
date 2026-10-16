@@ -58,4 +58,11 @@ echo "<INFO> Plugin Data folder is: $PDATA"
 echo "<INFO> Plugin Log folder (on RAMDISK!) is: $PLOG"
 echo "<INFO> Plugin CONFIG folder is: $PCONFIG"
 
+# Stop running daemon before upgrade
+PDAEMON="$LBPDAEMON/$PDIR"
+if [ -x "$PDAEMON/daemon.sh" ]; then
+    echo "<INFO> Stoppe laufenden Vitoconnect Daemon vor dem Upgrade..."
+    "$PDAEMON/daemon.sh" stop 2>&1
+fi
+
 exit 0
