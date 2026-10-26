@@ -215,6 +215,7 @@ class VitoconnectDaemon:
         self.poll_interval = 60
         self.heartbeat_interval = 1800  # 30 min
         self.current_loglevel = None
+        self.rate_limit_until = 0
 
 
     def load_config(self):
@@ -464,6 +465,15 @@ class VitoconnectDaemon:
             logger.info("MQTT is disabled in configuration.")
             return True
 
+        # Stop and cleanly disconnect any existing MQTT client before reconnecting
+        if self.mqtt_client:
+            try:
+                self.mqtt_client.loop_stop()
+                self.mqtt_client.disconnect()
+            except Exception:
+                pass
+            self.mqtt_client = None
+
         client_id = f"loxberry_vitoconnect_{os.getpid()}"
 
         # Support paho-mqtt v2 while maintaining compatibility with v1
@@ -488,6 +498,7 @@ class VitoconnectDaemon:
             logger.info("MQTT connecting without authentication (anonymous)")
 
         self.mqtt_client.on_connect = self._on_mqtt_connect
+        self.mqtt_client.on_disconnect = self._on_mqtt_disconnect
         self.mqtt_client.on_message = self._on_mqtt_message
 
         try:
@@ -528,56 +539,79 @@ class VitoconnectDaemon:
                 except Exception:
                     pass
 
+    def _on_mqtt_disconnect(self, client, userdata, flags_or_rc, rc=None, properties=None):
+        actual_rc = rc if rc is not None else flags_or_rc
+        rc_code = getattr(actual_rc, "value", actual_rc)
+        if rc_code != 0:
+            logger.warning(f"MQTT connection lost (rc={rc_code}). Watchdog will attempt reconnect.")
+
     def _on_mqtt_message(self, client, userdata, msg):
-        topic = msg.topic
-        payload = msg.payload.decode("utf-8").strip()
-        logger.info(f"Received MQTT command on {topic}: {payload}")
+        try:
+            topic = msg.topic
+            payload = msg.payload.decode("utf-8", errors="replace").strip()
+            logger.info(f"Received MQTT command on {topic}: {payload}")
 
-        if topic == f"{self.base_topic}/poll":
-            self.force_poll = True
-            return
+            if topic == f"{self.base_topic}/poll":
+                self.force_poll = True
+                return
 
-        prefix = f"{self.base_topic}/set/"
-        if topic.startswith(prefix):
-            subtopic = topic[len(prefix):]
-            self.handle_command(subtopic, payload)
+            prefix = f"{self.base_topic}/set/"
+            if topic.startswith(prefix):
+                subtopic = topic[len(prefix):]
+                self.handle_command(subtopic, payload)
+        except Exception as e:
+            logger.error(f"Unhandled exception in MQTT message handler: {e}", exc_info=True)
+
+    def safe_prop(self, target, prop_name: str, default=None):
+        """Safely retrieve a property/attribute without raising API/network exceptions."""
+        try:
+            return getattr(target, prop_name, default)
+        except Exception as e:
+            logger.debug(f"Property lookup error ({prop_name}): {e}")
+            return default
 
     def handle_command(self, subtopic: str, value: str):
-        """Execute command via PyViCare."""
-        if not self.devices:
-            logger.warning("No active device to handle command.")
-            return
+        """Execute command via PyViCare with full error shielding."""
+        try:
+            if not self.devices:
+                logger.warning("No active device to handle command.")
+                return
 
-        parts = [p for p in subtopic.strip("/").split("/") if p]
-        if not parts:
-            return
+            if getattr(self, "rate_limit_until", 0) > time.time():
+                remaining = int(self.rate_limit_until - time.time())
+                logger.warning(f"Viessmann API rate limit cooldown active ({remaining}s remaining). Command '{subtopic}' rejected.")
+                return
 
-        # Check if a specific device is targeted: e.g. device_0/... or device/0/...
-        target_device = None
-        if parts[0].startswith("device_"):
-            try:
-                dev_idx = int(parts[0].split("_")[1])
+            parts = [p for p in subtopic.strip("/").split("/") if p]
+            if not parts:
+                return
+
+            # Check if a specific device is targeted: e.g. device_0/... or device/0/...
+            target_device = None
+            if parts[0].startswith("device_"):
+                try:
+                    dev_idx = int(parts[0].split("_")[1])
+                    if dev_idx < len(self.devices):
+                        target_device = self.devices[dev_idx]
+                    parts = parts[1:]
+                except (ValueError, IndexError):
+                    pass
+            elif parts[0] == "device" and len(parts) > 1 and parts[1].isdigit():
+                dev_idx = int(parts[1])
                 if dev_idx < len(self.devices):
                     target_device = self.devices[dev_idx]
-                parts = parts[1:]
-            except (ValueError, IndexError):
-                pass
-        elif parts[0] == "device" and len(parts) > 1 and parts[1].isdigit():
-            dev_idx = int(parts[1])
-            if dev_idx < len(self.devices):
-                target_device = self.devices[dev_idx]
-            parts = parts[2:]
+                parts = parts[2:]
 
-        # If no specific device is targeted, find the first heating/active device
-        if not target_device:
-            target_device = self.devices[0]
-            for d in self.devices:
-                if getattr(d, "circuits", None) or hasattr(d, "setDomesticHotWaterTargetTemperature"):
-                    target_device = d
-                    break
+            # If no specific device is targeted, find the first heating/active device safely
+            if not target_device:
+                target_device = self.devices[0]
+                for d in self.devices:
+                    circs = self.safe_prop(d, "circuits", None)
+                    if circs or hasattr(d, "setDomesticHotWaterTargetTemperature"):
+                        target_device = d
+                        break
 
-        device = target_device
-        try:
+            device = target_device
             sub = "/".join(parts)
             
             # e.g. circuit_0/normal_temperature or circuit/0/normal_temperature
@@ -592,7 +626,7 @@ class VitoconnectDaemon:
                     circuit_idx = int(parts[1])
                     parts = [parts[0]] + parts[2:]
 
-                circuits = getattr(device, "circuits", [])
+                circuits = self.safe_prop(device, "circuits", []) or []
                 if circuit_idx < len(circuits):
                     circuit = circuits[circuit_idx]
                     cmd = parts[-1]
@@ -657,11 +691,14 @@ class VitoconnectDaemon:
                     return
 
             logger.warning(f"Unrecognized command subtopic: {subtopic}")
+        except PyViCareRateLimitError:
+            logger.warning(f"Viessmann API rate limit hit while executing '{subtopic}'! Entering 120s cooldown.")
+            self.rate_limit_until = time.time() + 120
         except Exception as e:
-            logger.error(f"Error executing command '{subtopic}' with value '{value}': {e}")
+            logger.error(f"Error executing command '{subtopic}' with value '{value}': {e}", exc_info=True)
 
     def publish(self, topic: str, payload, retain=False, force=False):
-        """Publish value to MQTT with Change-Detection."""
+        """Publish value to MQTT with Change-Detection. Only records last_published if publish succeeded."""
         if not self.mqtt_client:
             return
 
@@ -671,9 +708,14 @@ class VitoconnectDaemon:
         if not force and last_val == str_val:
             return  # No change, skip
 
-        self.last_published[topic] = str_val
         try:
-            self.mqtt_client.publish(topic, str_val, qos=0, retain=retain)
+            res = self.mqtt_client.publish(topic, str_val, qos=0, retain=retain)
+            # Check publish status: in paho-mqtt, res.rc indicates if message was successfully queued
+            rc = getattr(res, "rc", mqtt.MQTT_ERR_SUCCESS if mqtt else 0)
+            if rc == (mqtt.MQTT_ERR_SUCCESS if mqtt else 0):
+                self.last_published[topic] = str_val
+            else:
+                logger.warning(f"MQTT publish to {topic} returned rc={rc}")
         except Exception as e:
             logger.error(f"Error publishing to {topic}: {e}")
 
@@ -1231,10 +1273,15 @@ class VitoconnectDaemon:
             self.update_stats_file()
 
         except PyViCareRateLimitError:
-            logger.warning("Viessmann rate limit hit! Increasing backoff.")
-            time.sleep(120)
+            logger.warning("Viessmann rate limit hit! Cooldown for 120s.")
+            self.rate_limit_until = time.time() + 120
         except Exception as e:
-            logger.error(f"Error polling Viessmann API: {e}", exc_info=True)
+            err_str = str(e)
+            if "500" in err_str or "timeout" in err_str.lower():
+                logger.warning(f"Viessmann API server error/timeout: {e}. Cooldown for 60s.")
+                self.rate_limit_until = time.time() + 60
+            else:
+                logger.error(f"Error polling Viessmann API: {e}", exc_info=True)
 
     def update_stats_file(self):
         try:
@@ -1287,11 +1334,29 @@ class VitoconnectDaemon:
         last_poll_time = 0
         last_config_check = 0
         last_auth_attempt = 0
+        last_mqtt_check = 0
         auth_backoff = 300  # wait 5 min after auth failure before retrying Viessmann
         last_cfg_mtime = self.config_path.stat().st_mtime if self.config_path.exists() else 0
 
         while self.running:
             now = time.time()
+
+            # MQTT Watchdog: verify connection every 15s and reconnect if down
+            if now - last_mqtt_check >= 15:
+                last_mqtt_check = now
+                if self.get_mqtt_settings():
+                    mqtt_alive = False
+                    if self.mqtt_client:
+                        try:
+                            mqtt_alive = self.mqtt_client.is_connected()
+                        except Exception:
+                            mqtt_alive = False
+                    if not mqtt_alive:
+                        logger.warning("MQTT watchdog detected disconnected or dead client. Reconnecting...")
+                        try:
+                            self.init_mqtt()
+                        except Exception as ex:
+                            logger.error(f"Error during MQTT reconnection: {ex}")
 
             # Check if config file or LoxBerry loglevel changed
             if now - last_config_check >= 5:
@@ -1330,6 +1395,11 @@ class VitoconnectDaemon:
                     continue
 
             if not self.devices:
+                time.sleep(1)
+                continue
+
+            # Check if API cooldown is active (after rate limit or server error)
+            if getattr(self, "rate_limit_until", 0) > now:
                 time.sleep(1)
                 continue
 
