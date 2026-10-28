@@ -649,12 +649,15 @@ class VitoconnectDaemon:
                     self.force_poll = True
                     return
 
-            # DHW Commands
-            if "dhw" in sub:
+            # DHW Commands (specific to target temp or one time charge)
+            if "dhw" in sub and ("target_temperature" in sub or "temperature" in sub or "one_time_charge" in sub):
                 if "target_temperature" in sub or "temperature" in sub:
                     temp = float(value)
                     logger.info(f"Setting DHW target temperature to {temp}°C")
                     device.setDomesticHotWaterTargetTemperature(temp)
+                    self.quota.record_call()
+                    self.force_poll = True
+                    return
                 elif "one_time_charge" in sub:
                     if value.lower() in ["1", "start", "true", "on"]:
                         logger.info("Activating DHW one-time charge")
@@ -662,15 +665,17 @@ class VitoconnectDaemon:
                     else:
                         logger.info("Deactivating DHW one-time charge")
                         device.deactivateDomesticHotWaterOneTimeCharge()
-                self.quota.record_call()
-                self.force_poll = True
-                return
+                    self.quota.record_call()
+                    self.force_poll = True
+                    return
 
-            # Generic Feature Commands: e.g. features/heating/circuits/0/heating/curve with action/payload
-            if "features/" in sub:
-                feat_sub = sub.split("features/", 1)[1]
-                # Try parsing feature path and optional action
-                feat_parts = feat_sub.split("/")
+            # Generic Feature Commands: e.g. features/heating/... or heating/dhw/pumps/circulation/schedule
+            feat_sub = sub
+            if "features/" in feat_sub:
+                feat_sub = feat_sub.split("features/", 1)[1]
+
+            if "features/" in sub or feat_sub.startswith("heating/") or feat_sub.startswith("ventilation/") or "schedule" in feat_sub or "curve" in feat_sub:
+                feat_parts = [p for p in feat_sub.split("/") if p]
                 action = feat_parts[-1] if len(feat_parts) > 1 and feat_parts[-1].startswith("set") else None
                 feat_name = ".".join(feat_parts[:-1]) if action else ".".join(feat_parts)
                 
@@ -680,6 +685,18 @@ class VitoconnectDaemon:
                     payload_val = json.loads(value)
                 except Exception:
                     pass
+
+                # If schedule, default action is setSchedule
+                if not action:
+                    if "schedule" in feat_name:
+                        action = "setSchedule"
+                    elif "mode" in feat_name:
+                        action = "setMode"
+
+                # Viessmann API expects {"newSchedule": <schedule>} for setSchedule
+                if action == "setSchedule":
+                    if isinstance(payload_val, dict) and "newSchedule" not in payload_val:
+                        payload_val = {"newSchedule": payload_val}
 
                 raw_cfg = getattr(device, "_raw_config", None)
                 if raw_cfg and hasattr(raw_cfg, "service"):

@@ -48,10 +48,36 @@ if ($action == "summary" || $action == "sum") {
 
 if ($action == "setvalue" && $option !== null && $value !== null) {
     LOGINF("Legacy setvalue: $option = $value");
-    
-    // Map legacy options to new set topics
-    $subtopic = str_replace(".", "/", $option);
-    $targetTopic = "$topic/set/$subtopic";
+
+    $modeIntStr = [
+        1 => "standby",
+        2 => "dhwAndHeating",
+        3 => "dhw",
+        4 => "forcedNormal",
+        5 => "forcedReduced"
+    ];
+
+    $clean_option = preg_replace('/\.(enum|value)$/i', '', trim($option));
+
+    if ($clean_option == "heating.circuits.0.operating.modes.active" || $clean_option == "heating.circuits.0.operating.mode") {
+        $val_str = (is_numeric($value) && isset($modeIntStr[(int)$value])) ? $modeIntStr[(int)$value] : (string)$value;
+        $targetTopic = "$topic/set/circuit_0/mode";
+        $value = $val_str;
+    } elseif ($clean_option == "heating.circuits.0.operating.programs.normal") {
+        $targetTopic = "$topic/set/circuit_0/normal_temperature";
+    } elseif ($clean_option == "heating.circuits.0.operating.programs.comfort") {
+        $targetTopic = "$topic/set/circuit_0/comfort_temperature";
+    } elseif ($clean_option == "heating.circuits.0.operating.programs.reduced") {
+        $targetTopic = "$topic/set/circuit_0/reduced_temperature";
+    } elseif ($clean_option == "heating.dhw.temperature" || $clean_option == "heating.dhw.targetTemperature") {
+        $targetTopic = "$topic/set/dhw/target_temperature";
+    } elseif ($clean_option == "heating.dhw.oneTimeCharge") {
+        $targetTopic = "$topic/set/dhw/one_time_charge";
+    } else {
+        // Direct feature path
+        $subtopic = str_replace(".", "/", $option);
+        $targetTopic = "$topic/set/$subtopic";
+    }
     
     $res = vitoconnect_mqtt_publish($targetTopic, (string)$value);
     if (!empty($res["success"])) {
@@ -60,9 +86,9 @@ if ($action == "setvalue" && $option !== null && $value !== null) {
         LOGERR("Failed to publish to MQTT: " . ($res["error"] ?? "unknown error"));
     }
     
-    echo json_encode(["status" => "ok", "topic" => $targetTopic, "value" => $value]);
+    echo json_encode(["status" => (!empty($res["success"]) ? "ok" : "error"), "topic" => $targetTopic, "value" => $value]);
     LOGEND("Finished");
-    exit(0);
+    exit(!empty($res["success"]) ? 0 : 1);
 }
 
 LOGWARN("Unknown action: $action");
