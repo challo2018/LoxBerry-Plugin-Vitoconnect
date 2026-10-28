@@ -649,12 +649,20 @@ class VitoconnectDaemon:
                     self.force_poll = True
                     return
 
-            # DHW Commands (specific to target temp or one time charge)
-            if "dhw" in sub and ("target_temperature" in sub or "temperature" in sub or "one_time_charge" in sub):
+            # DHW Commands (simple topics like dhw/target_temperature or dhw/temperature or dhw/one_time_charge)
+            if not sub.startswith("features/") and "dhw" in sub and ("target_temperature" in sub or "temperature" in sub or "one_time_charge" in sub):
                 if "target_temperature" in sub or "temperature" in sub:
                     temp = float(value)
                     logger.info(f"Setting DHW target temperature to {temp}°C")
-                    device.setDomesticHotWaterTargetTemperature(temp)
+                    if hasattr(device, "setDomesticHotWaterTemperature"):
+                        device.setDomesticHotWaterTemperature(temp)
+                    elif hasattr(device, "setDomesticHotWaterTargetTemperature"):
+                        device.setDomesticHotWaterTargetTemperature(temp)
+                    else:
+                        # Fallback for HeatPump or devices where PyViCare lacks helper method
+                        raw_cfg = getattr(device, "_raw_config", None)
+                        if raw_cfg and hasattr(raw_cfg, "service"):
+                            raw_cfg.service.setProperty(raw_cfg.accessor, "heating.dhw.temperature.main", "setTargetTemperature", {"temperature": temp})
                     self.quota.record_call()
                     self.force_poll = True
                     return
@@ -686,23 +694,35 @@ class VitoconnectDaemon:
                 except Exception:
                     pass
 
-                # If schedule, default action is setSchedule
+                # Infer action if not specified
                 if not action:
                     if "schedule" in feat_name:
                         action = "setSchedule"
+                    elif "temperature" in feat_name or feat_name.endswith(".main") or feat_name.endswith(".top"):
+                        action = "setTargetTemperature"
                     elif "mode" in feat_name:
                         action = "setMode"
+                    else:
+                        action = "setMode"
 
-                # Viessmann API expects {"newSchedule": <schedule>} for setSchedule
+                # Infer payload structure for Viessmann API commands
                 if action == "setSchedule":
                     if isinstance(payload_val, dict) and "newSchedule" not in payload_val:
                         payload_val = {"newSchedule": payload_val}
+                elif action == "setTargetTemperature":
+                    if not isinstance(payload_val, dict):
+                        try:
+                            payload_val = {"temperature": float(payload_val)}
+                        except ValueError:
+                            payload_val = {"temperature": payload_val}
+                elif action == "setMode":
+                    if not isinstance(payload_val, dict):
+                        payload_val = {"mode": str(payload_val)}
 
                 raw_cfg = getattr(device, "_raw_config", None)
                 if raw_cfg and hasattr(raw_cfg, "service"):
-                    act_name = action if action else "setMode"
-                    logger.info(f"Setting raw feature {feat_name} via action {act_name} with value {payload_val}")
-                    raw_cfg.service.setProperty(raw_cfg.accessor, feat_name, act_name, payload_val)
+                    logger.info(f"Setting raw feature {feat_name} via action {action} with value {payload_val}")
+                    raw_cfg.service.setProperty(raw_cfg.accessor, feat_name, action, payload_val)
                     self.quota.record_call()
                     self.force_poll = True
                     return
@@ -1206,26 +1226,33 @@ class VitoconnectDaemon:
                             
                             # Check for writable commands and extract constraints/allowed values
                             commands = f_item.get("commands", {})
-                            is_writable = bool(commands)
+                            is_writable = False
                             allowed_val_info = None
                             cmd_name = None
 
-                            if is_writable:
+                            # Exclude device internal telemetry/serial/metadata from writable command discovery
+                            ignore_writable = f_name.startswith("device.") or "serial" in f_name or "identification" in f_name or "message" in f_name
+
+                            if isinstance(commands, dict) and commands and not ignore_writable:
                                 for c_name, c_obj in commands.items():
-                                    cmd_name = c_name
-                                    params = c_obj.get("params", {}) if isinstance(c_obj, dict) else {}
-                                    for param_key, param_spec in params.items():
-                                        if isinstance(param_spec, dict):
-                                            constraints = param_spec.get("constraints", {})
-                                            if isinstance(constraints, dict):
-                                                if "enum" in constraints:
-                                                    allowed_val_info = ", ".join(str(e) for e in constraints["enum"])
-                                                elif "min" in constraints and "max" in constraints:
-                                                    step_str = f" (Schritt {constraints.get('stepping')})" if "stepping" in constraints else ""
-                                                    unit_str = f" {constraints.get('unit')}" if "unit" in constraints else ""
-                                                    allowed_val_info = f"{constraints['min']} - {constraints['max']}{unit_str}{step_str}"
-                                    if allowed_val_info:
-                                        break
+                                    if isinstance(c_obj, dict):
+                                        if c_obj.get("isExecutable", True) is False:
+                                            continue
+                                        is_writable = True
+                                        cmd_name = c_name
+                                        params = c_obj.get("params", {}) if isinstance(c_obj, dict) else {}
+                                        for param_key, param_spec in params.items():
+                                            if isinstance(param_spec, dict):
+                                                constraints = param_spec.get("constraints", {})
+                                                if isinstance(constraints, dict):
+                                                    if "enum" in constraints:
+                                                        allowed_val_info = ", ".join(str(e) for e in constraints["enum"])
+                                                    elif "min" in constraints and "max" in constraints:
+                                                        step_str = f" (Schritt {constraints.get('stepping')})" if "stepping" in constraints else ""
+                                                        unit_str = f" {constraints.get('unit')}" if "unit" in constraints else ""
+                                                        allowed_val_info = f"{constraints['min']} - {constraints['max']}{unit_str}{step_str}"
+                                        if allowed_val_info:
+                                            break
                             
                             for p_key, p_val in f_props.items():
                                 if not isinstance(p_val, dict):

@@ -89,10 +89,25 @@ $mqtttopic = !empty($config->MQTT->topic) ? $config->MQTT->topic : "vitoconnect"
 }
 .test-panel-grid {
 	display: grid;
-	grid-template-columns: 2fr 1fr auto;
+	grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
 	gap: 12px;
 	align-items: end;
 	margin-top: 10px;
+}
+.test-panel-grid > div {
+	min-width: 0;
+}
+#test-target-select {
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+#test-target-val {
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
 }
 @media (max-width: 768px) {
 	.stats-grid {
@@ -389,9 +404,28 @@ function updateCommandsUI(writableList) {
 	for (var i = 0; i < writableList.length; i++) {
 		var item = writableList[i];
 		var setTopic = item.set_topic;
+		if (!setTopic) continue;
+
+		// Filter out internal telemetry / serial features from test dropdown
+		if (setTopic.indexOf("serial") !== -1 || setTopic.indexOf("materialId") !== -1 || setTopic.indexOf("identification") !== -1) {
+			continue;
+		}
+
 		var label = item.description || setTopic;
 		var allowed = item.allowed_values || "Zahl / Text";
-		var currVal = item.value !== undefined ? " (Aktuell: " + item.value + (item.unit ? " " + item.unit : "") + ")" : "";
+		
+		// Clean display of current value (truncate objects/JSON so dropdown doesn't blow up)
+		var currVal = "";
+		if (item.value !== undefined && item.value !== null) {
+			var valStr = String(item.value);
+			if (valStr.startsWith("{") || valStr.startsWith("[")) {
+				currVal = ""; // Don't show raw JSON dumps in option label
+			} else if (valStr.length > 25) {
+				currVal = " (Aktuell: " + valStr.substring(0, 22) + "...)";
+			} else {
+				currVal = " (Aktuell: " + valStr + (item.unit ? " " + item.unit : "") + ")";
+			}
+		}
 
 		selectHtml += "<option value='" + escapeHtml(setTopic) + "' data-allowed='" + escapeHtml(allowed) + "'>";
 		selectHtml += escapeHtml(label) + currVal + " &rarr; " + escapeHtml(setTopic);
