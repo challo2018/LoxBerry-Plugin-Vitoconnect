@@ -611,10 +611,57 @@ function Viessmann_SetData( $Parameter, $Value, $apiversion ){
 			$url = $url.$Parameter."/commands/setTargetTemperature";
 			$PostData = "{\"temperature\":".$Value."}";
 			break;
+		/* DHW Hysteresis - Standard, Switch On, Switch Off */
 		case "heating.dhw.temperature.hysteresis":
-			$url = $url.$Parameter."/commands/setHysteresis";
-			$PostData = "{\"hysteresis\":".$Value."}";
-			break;		
+		case "heating.dhw.temperature.hysteresis.switchOnValue":
+		case "heating.dhw.temperature.hysteresis.switchOffValue":
+		
+		    $feature = "heating.dhw.temperature.hysteresis";
+		
+		    // Select Viessmann API command
+		    switch ($Parameter) {
+		        case "heating.dhw.temperature.hysteresis.switchOnValue":
+		            $command = "setHysteresisSwitchOnValue";
+		            $min = 1;
+		            $max = 10;
+		            break;
+		
+		        case "heating.dhw.temperature.hysteresis.switchOffValue":
+		            $command = "setHysteresisSwitchOffValue";
+		            $min = 0;
+		            $max = 2.5;
+		            break;
+		
+		        default:
+		            $command = "setHysteresis";
+		            $min = 1;
+		            $max = 10;
+		            break;
+		    }
+		
+		    // Validate value
+		    $number = str_replace(",", ".", trim((string)$Value));
+		
+		    if (!is_numeric($number)) {
+		        LOGERR("Invalid hysteresis value: " . $Value);
+		        return null;
+		    }
+		
+		    $number = (float)$number;
+		
+		    // Validate API range and 0.5 K stepping
+		    if ($number < $min || $number > $max ||
+		        abs($number * 2 - round($number * 2)) > 0.00001) {
+		        LOGERR("Hysteresis value out of range: " . $number);
+		        return null;
+		    }
+		
+		    // Build API request
+		    $url = $url.$feature."/commands/".$command;
+		    $PostData = json_encode(["hysteresis" => $number]);
+		
+		    LOGINF("DHW Hysteresis: ".$command." = ".$number." K");
+		    break;	
 		case "heating.circuits.0.operating.modes.active":
 			$url = $url.$Parameter."/commands/setMode";
 			$PostData = "{\"mode\":\"".$Value."\"}";
@@ -713,15 +760,6 @@ function Viessmann_SetData( $Parameter, $Value, $apiversion ){
 			$PostData = "{\"newSchedule\":".$Value."}";
 			break;
 		/* added by Flanki */
-		case "heating.dhw.temperature.hysteresis":
-			$url = $url.$Parameter."/commands/setHysteresisSwitchOnValue";
-			$PostData = "{\"hysteresis\":".$Value."}";
-			break;
-		// min: 0, max: 2.5
-		case "heating.dhw.temperature.hysteresis":
-			$url = $url.$Parameter."/commands/setHysteresisSwitchOffValue";
-			$PostData = "{\"hysteresis\":".$Value."}";
-			break;
 		// note: only working if dhw mode is comfort and not eco
 		case "heating.dhw.hygiene":
 			if($Value == "enable"){
